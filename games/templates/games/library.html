@@ -1,0 +1,262 @@
+{% extends 'games/base.html' %}
+{% load static %}
+
+{% block title %}Minha Biblioteca - Retro Games Cloud{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="modern-breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'home' %}">Início</a></li>
+        <li class="breadcrumb-item active">Biblioteca</li>
+    </ol>
+</nav>
+
+<div class="text-center mb-5 animate-fade-in">
+    <h1 class="retro-title text-gradient">
+        <i class="fas fa-book me-3"></i>
+        Minha Biblioteca
+    </h1>
+    <p class="retro-subtitle">
+        Seus jogos e assinaturas
+    </p>
+</div>
+
+<!-- Estatísticas -->
+<div class="row mb-5">
+    <div class="col-md-4">
+        <div class="modern-card text-center animate-glow">
+            <i class="fas fa-gamepad fa-2x text-gradient mb-3"></i>
+            <h3 class="retro-heading">{{ purchased_games.count }}</h3>
+            <p class="retro-text">Jogos Comprados</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="modern-card text-center animate-glow">
+            <i class="fas fa-crown fa-2x text-gradient mb-3"></i>
+            <h3 class="retro-heading">{{ subscription_games|length }}</h3>
+            <p class="retro-text">Jogos de Planos</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="modern-card text-center animate-glow">
+            <i class="fas fa-calendar fa-2x text-gradient mb-3"></i>
+            <h3 class="retro-heading">{{ active_subscriptions.count }}</h3>
+            <p class="retro-text">Assinaturas Ativas</p>
+        </div>
+    </div>
+</div>
+
+<!-- Jogos Comprados -->
+{% if purchased_games %}
+<section class="mb-5">
+    <h2 class="retro-heading mb-4">
+        <i class="fas fa-shopping-cart me-2"></i>Jogos Comprados
+        <span class="modern-badge modern-badge-success">{{ purchased_games.count }} jogos</span>
+    </h2>
+    
+    <div class="row g-4">
+        {% for entitlement in purchased_games %}
+        <div class="col-lg-3 col-md-4 col-sm-6">
+            <div class="game-card-modern h-100">
+                <div class="game-image-modern" style="background-image: url('{{ entitlement.game.cover_image }}');">
+                    <div class="position-absolute top-0 end-0 p-2">
+                        <span class="modern-badge modern-badge-success">
+                            <i class="fas fa-check me-1"></i>Comprado
+                        </span>
+                    </div>
+                </div>
+                <div class="game-title-modern">
+                    <h5 class="game-title-modern">{{ entitlement.game.title }}</h5>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="game-console-modern">{{ entitlement.game.console }}</span>
+                        <a href="{% url 'game_detail' entitlement.game.id %}" class="modern-btn modern-btn-primary btn-sm">
+                            <i class="fas fa-play me-1"></i>Jogar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Jogos de Assinaturas -->
+{% if subscription_games %}
+<section class="mb-5">
+    <h2 class="retro-heading mb-4">
+        <i class="fas fa-crown me-2"></i>Jogos de Assinaturas
+        <span class="modern-badge modern-badge-warning">{{ subscription_games|length }} jogos</span>
+    </h2>
+    
+    <div class="row g-4">
+        {% for item in subscription_games %}
+        <div class="col-lg-3 col-md-4 col-sm-6">
+            <div class="game-card-modern h-100">
+                <div class="game-image-modern" style="background-image: url('{{ item.game.cover_image }}');">
+                    <div class="position-absolute top-0 end-0 p-2">
+                        <span class="modern-badge modern-badge-warning">
+                            <i class="fas fa-crown me-1"></i>{{ item.plan.name }}
+                        </span>
+                    </div>
+                </div>
+                <div class="game-title-modern">
+                    <h5 class="game-title-modern">{{ item.game.title }}</h5>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="game-console-modern">{{ item.game.console }}</span>
+                        <a href="{% url 'game_detail' item.game.id %}" class="modern-btn modern-btn-primary btn-sm">
+                            <i class="fas fa-play me-1"></i>Jogar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Assinaturas Ativas -->
+{% if active_subscriptions %}
+<section class="mb-5">
+    <h2 class="retro-heading mb-4">
+        <i class="fas fa-calendar me-2"></i>Assinaturas Ativas
+        <span class="modern-badge modern-badge-primary">{{ active_subscriptions.count }} ativas</span>
+    </h2>
+    
+    <div class="row g-4">
+        {% for subscription in active_subscriptions %}
+        <div class="col-lg-4 col-md-6">
+            <div class="modern-card h-100">
+                <div class="text-center mb-3">
+                    <i class="fas fa-crown fa-2x text-gradient mb-2"></i>
+                    <h3 class="retro-heading">{{ subscription.plan.name }}</h3>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span class="retro-text">Status:</span>
+                        <span class="modern-badge modern-badge-success">Ativa</span>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span class="retro-text">Válida até:</span>
+                        <span class="retro-text">{{ subscription.current_period_end|date:"d/m/Y" }}</span>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span class="retro-text">Jogos incluídos:</span>
+                        <span class="retro-text">{{ subscription.plan.games.count }}</span>
+                    </div>
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <a href="{% url 'plan_detail' subscription.plan.id %}" class="modern-btn modern-btn-primary">
+                        <i class="fas fa-info-circle me-1"></i>Ver Detalhes
+                    </a>
+                    <form method="post" action="{% url 'cancel_subscription' subscription.id %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="modern-btn modern-btn-danger w-100" 
+                                onclick="return confirm('Tem certeza que deseja cancelar esta assinatura?')">
+                            <i class="fas fa-times me-1"></i>Cancelar Assinatura
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Biblioteca Vazia -->
+{% if not purchased_games and not subscription_games %}
+<div class="modern-card text-center">
+    <i class="fas fa-book fa-4x text-muted mb-4"></i>
+    <h2 class="retro-heading">Sua biblioteca está vazia</h2>
+    <p class="retro-text mb-4">
+        Comece explorando nossa coleção de jogos retrô e adicione alguns títulos à sua biblioteca!
+    </p>
+    <div class="d-flex gap-3 justify-content-center flex-wrap">
+        <a href="{% url 'home' %}" class="modern-btn modern-btn-primary">
+            <i class="fas fa-gamepad me-2"></i>Explorar Jogos
+        </a>
+        <a href="{% url 'home' %}" class="modern-btn modern-btn-secondary">
+            <i class="fas fa-crown me-2"></i>Ver Planos
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Efeito de hover nos cards de jogos
+    const gameCards = document.querySelectorAll('.game-card-modern');
+    gameCards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-8px)';
+        });
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+    
+    // Efeito de hover nas imagens dos jogos
+    const gameImages = document.querySelectorAll('.game-image-modern');
+    gameImages.forEach(img => {
+        img.addEventListener('mouseenter', function() {
+            this.style.transform = 'scale(1.05)';
+        });
+        img.addEventListener('mouseleave', function() {
+            this.style.transform = 'scale(1)';
+        });
+    });
+    
+    // Efeito de hover nos badges
+    const badges = document.querySelectorAll('.modern-badge');
+    badges.forEach(badge => {
+        badge.addEventListener('mouseenter', function() {
+            this.style.transform = 'scale(1.1)';
+        });
+        badge.addEventListener('mouseleave', function() {
+            this.style.transform = 'scale(1)';
+        });
+    });
+    
+    // Animação de entrada
+    const cards = document.querySelectorAll('.modern-card, .game-card-modern');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(30px)';
+        setTimeout(() => {
+            card.style.transition = 'all 0.6s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+    
+    // Efeito de digitação no título
+    const title = document.querySelector('.retro-title');
+    if (title) {
+        const text = title.textContent;
+        title.textContent = '';
+        let i = 0;
+        const typeWriter = () => {
+            if (i < text.length) {
+                title.textContent += text.charAt(i);
+                i++;
+                setTimeout(typeWriter, 100);
+            }
+        };
+        setTimeout(typeWriter, 500);
+    }
+});
+</script>
+{% endblock %}

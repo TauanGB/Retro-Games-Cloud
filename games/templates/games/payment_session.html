@@ -1,0 +1,194 @@
+{% extends 'games/base.html' %}
+{% load static %}
+
+{% block title %}Pagamento - Retro Games Cloud{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6 col-md-8">
+        <div class="modern-card">
+            <div class="text-center mb-4">
+                <i class="fas fa-credit-card fa-3x text-gradient mb-3"></i>
+                <h1 class="retro-title">Simulação de Pagamento</h1>
+                <p class="retro-subtitle">Teste o sistema de pagamento</p>
+            </div>
+            
+            <!-- Informações do Item -->
+            <div class="modern-card mb-4">
+                <h3 class="retro-heading mb-3">
+                    <i class="fas fa-shopping-cart me-2"></i>Item
+                </h3>
+                <div class="row">
+                    <div class="col-md-4">
+                        {% if session.game %}
+                        <div class="game-image-modern" style="background-image: url('{{ session.game.cover_image }}'); height: 120px; border-radius: 8px;"></div>
+                        {% else %}
+                        <div class="text-center">
+                            <i class="fas fa-crown fa-3x text-gradient"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-8">
+                        <h4 class="retro-heading">
+                            {% if session.game %}
+                                {{ session.game.title }}
+                            {% else %}
+                                {{ session.plan.name }}
+                            {% endif %}
+                        </h4>
+                        <p class="retro-text">
+                            {% if session.game %}
+                                <span class="game-console-modern">{{ session.game.console }}</span>
+                            {% else %}
+                                <span class="modern-badge modern-badge-warning">Plano de Assinatura</span>
+                            {% endif %}
+                        </p>
+                        <p class="retro-text">
+                            {% if session.game %}
+                                {{ session.game.description|truncatewords:20 }}
+                            {% else %}
+                                {{ session.plan.description|truncatewords:20 }}
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Informações do Pagamento -->
+            <div class="modern-card mb-4">
+                <h3 class="retro-heading mb-3">
+                    <i class="fas fa-info-circle me-2"></i>Informações do Pagamento
+                </h3>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="retro-text">Valor:</span>
+                            <span class="modern-badge modern-badge-primary fs-5">
+                                <i class="fas fa-dollar-sign me-1"></i>R$ {{ session.amount }}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="retro-text">Tipo:</span>
+                            <span class="retro-text">
+                                {% if session.game %}
+                                    Compra Individual
+                                {% else %}
+                                    Assinatura Mensal
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="retro-text">Sessão:</span>
+                            <span class="retro-text" style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">
+                                {{ session.session_id|truncatechars:8 }}...
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="retro-text">Data:</span>
+                            <span class="retro-text">{{ session.created_at|date:"d/m/Y H:i" }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Botões de Simulação -->
+            <div class="text-center">
+                <h3 class="retro-heading mb-3">
+                    <i class="fas fa-cogs me-2"></i>Simular Pagamento
+                </h3>
+                <p class="retro-text mb-4">
+                    Escolha o resultado da simulação de pagamento:
+                </p>
+                
+                <div class="d-flex gap-3 justify-content-center flex-wrap">
+                    <form method="post" action="{% url 'payment_success' session.session_id %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="modern-btn modern-btn-primary">
+                            <i class="fas fa-check me-2"></i>Aprovar Pagamento
+                        </button>
+                    </form>
+                    
+                    <form method="post" action="{% url 'payment_failure' session.session_id %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="modern-btn modern-btn-danger">
+                            <i class="fas fa-times me-2"></i>Falhar Pagamento
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Aviso -->
+            <div class="modern-alert modern-alert-info mt-4">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Nota:</strong> Esta é uma simulação de pagamento para fins de teste. 
+                Nenhum valor real será cobrado.
+            </div>
+            
+            <!-- Voltar -->
+            <div class="text-center mt-4">
+                <a href="{% url 'home' %}" class="modern-btn modern-btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Voltar ao Início
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Animação de entrada
+    const cards = document.querySelectorAll('.modern-card');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(30px)';
+        setTimeout(() => {
+            card.style.transition = 'all 0.6s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 200);
+    });
+    
+    // Efeito de digitação no título
+    const title = document.querySelector('.retro-title');
+    if (title) {
+        const text = title.textContent;
+        title.textContent = '';
+        let i = 0;
+        const typeWriter = () => {
+            if (i < text.length) {
+                title.textContent += text.charAt(i);
+                i++;
+                setTimeout(typeWriter, 100);
+            }
+        };
+        setTimeout(typeWriter, 500);
+    }
+    
+    // Efeito de hover nos botões
+    const buttons = document.querySelectorAll('.modern-btn');
+    buttons.forEach(btn => {
+        btn.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+        });
+        btn.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+    
+    // Efeito pulsante no badge de preço
+    const priceBadge = document.querySelector('.modern-badge-primary');
+    if (priceBadge) {
+        setInterval(() => {
+            priceBadge.style.transform = 'scale(1.05)';
+            setTimeout(() => {
+                priceBadge.style.transform = 'scale(1)';
+            }, 200);
+        }, 2000);
+    }
+});
+</script>
+{% endblock %}

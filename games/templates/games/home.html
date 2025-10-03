@@ -1,0 +1,440 @@
+{% extends 'games/base.html' %}
+{% load static %}
+
+{% block title %}Retro Games Cloud - Biblioteca de Jogos Retrô{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="text-center mb-5 animate-fade-in">
+    <h1 class="retro-title text-gradient">
+        <i class="fas fa-gamepad me-3"></i>
+        Retro Games Cloud
+    </h1>
+    <p class="retro-subtitle">
+        Descubra e jogue os melhores jogos retrô clássicos
+    </p>
+</div>
+
+<!-- Filtros -->
+<div class="modern-filters text-center">
+    <h3 class="retro-heading mb-3">
+        <i class="fas fa-filter me-2"></i>Filtrar por Console
+    </h3>
+    <div class="d-flex flex-wrap justify-content-center gap-2">
+        <a href="{% url 'home' %}" class="filter-btn-modern {% if current_filter == 'Todos' %}active{% endif %}">
+            <i class="fas fa-th me-1"></i>Todos
+        </a>
+        {% for console in consoles %}
+        <a href="{% url 'home' %}?console={{ console }}" class="filter-btn-modern {% if current_filter == console %}active{% endif %}">
+            <i class="fas fa-tv me-1"></i>{{ console }}
+        </a>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Jogos -->
+<section class="mb-5">
+    <h2 class="retro-heading mb-4">
+        <i class="fas fa-gamepad me-2"></i>Jogos Disponíveis
+        <span class="modern-badge modern-badge-primary">{{ games.count }} jogos</span>
+    </h2>
+    
+    {% if games %}
+    <div class="row g-4">
+        {% for game in games %}
+        <div class="col-lg-3 col-md-4 col-sm-6">
+            <div class="game-card-modern h-100">
+                <div class="game-image-modern" style="background-image: url('{{ game.cover_image }}');">
+                    <div class="position-absolute top-0 end-0 p-2">
+                        <span class="modern-badge modern-badge-success">
+                            <i class="fas fa-tag me-1"></i>R$ {{ game.price }}
+                        </span>
+                    </div>
+                </div>
+                <div class="game-title-modern">
+                    <h5 class="game-title-modern">{{ game.title }}</h5>
+                    
+                    <!-- Categorias -->
+                    {% if game.categories.all %}
+                    <div class="mb-2">
+                        {% for category in game.categories.all|slice:":2" %}
+                        <span class="modern-badge d-inline-block text-truncate" style="background-color: {{ category.color }}; color: white; font-size: 0.7rem; padding: 0.2rem 0.5rem; max-width: 100px;" title="{{ category.name }}">
+                            <i class="{{ category.icon }} me-1"></i>{{ category.name|truncatechars:8 }}
+                        </span>
+                        {% endfor %}
+                        {% if game.categories.count > 2 %}
+                        <span class="modern-badge modern-badge-secondary" style="font-size: 0.7rem; padding: 0.2rem 0.5rem;">
+                            +{{ game.categories.count|add:"-2" }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="game-console-modern text-truncate" style="max-width: 60%;" title="{{ game.console }}">{{ game.console }}</span>
+                        <a href="{% url 'game_detail' game.id %}" class="modern-btn modern-btn-primary btn-sm flex-shrink-0">
+                            <i class="fas fa-eye me-1"></i>Ver Detalhes
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="modern-card text-center">
+        <i class="fas fa-gamepad fa-3x text-muted mb-3"></i>
+        <h3 class="retro-heading">Nenhum jogo encontrado</h3>
+        <p class="retro-text">Tente ajustar os filtros para encontrar jogos.</p>
+    </div>
+    {% endif %}
+</section>
+
+<!-- Planos Gerais -->
+<section class="mb-5">
+    <h2 class="retro-heading mb-4">
+        <i class="fas fa-crown me-2"></i>Planos Gerais
+        <span class="modern-badge modern-badge-warning">{{ plans.count }} planos</span>
+    </h2>
+    
+    {% if plans %}
+    <div class="row g-4">
+        {% for plan in plans %}
+        <div class="col-lg-4 col-md-6">
+            <div class="modern-card h-100 text-center">
+                <div class="mb-3">
+                    <i class="fas fa-crown fa-2x text-gradient"></i>
+                </div>
+                <h3 class="retro-heading">{{ plan.name }}</h3>
+                <p class="retro-text mb-3">{{ plan.description }}</p>
+                <div class="mb-3">
+                    <span class="modern-badge modern-badge-primary fs-4">
+                        <i class="fas fa-dollar-sign me-1"></i>R$ {{ plan.price }}/mês
+                    </span>
+                </div>
+                <div class="mb-3">
+                    <span class="modern-badge modern-badge-success">
+                        <i class="fas fa-gamepad me-1"></i>{{ plan.games.count }} jogos
+                    </span>
+                </div>
+                <a href="{% url 'plan_detail' plan.id %}" class="modern-btn modern-btn-primary">
+                    <i class="fas fa-info-circle me-1"></i>Ver Detalhes
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="modern-card text-center">
+        <i class="fas fa-crown fa-3x text-muted mb-3"></i>
+        <h3 class="retro-heading">Nenhum plano disponível</h3>
+        <p class="retro-text">Planos serão adicionados em breve.</p>
+    </div>
+    {% endif %}
+</section>
+
+<!-- Planos por Console -->
+<section class="mb-5">
+    <h2 class="retro-heading mb-4">
+        <i class="fas fa-tv me-2"></i>Planos por Console
+        <span class="modern-badge modern-badge-info">Consoles específicos</span>
+    </h2>
+    
+    <div class="row g-4">
+        <!-- Plano PlayStation -->
+        <div class="col-lg-3 col-md-4 col-sm-6">
+            <div class="modern-card h-100 text-center">
+                <div class="mb-3">
+                    <i class="fab fa-playstation fa-2x text-gradient"></i>
+                </div>
+                <h4 class="retro-heading">Plano PlayStation</h4>
+                <p class="retro-text mb-3">Acesso completo a todos os jogos do PlayStation. Inclui 4 jogos clássicos desta plataforma.</p>
+                
+                <div class="mb-3">
+                    <span class="modern-badge modern-badge-primary fs-5">
+                        <i class="fas fa-dollar-sign me-1"></i>R$ 18,90/mês
+                    </span>
+                </div>
+                
+                <div class="mb-3">
+                    <span class="modern-badge modern-badge-success">
+                        <i class="fas fa-gamepad me-1"></i>4 jogos
+                    </span>
+                </div>
+                
+                <a href="#" class="modern-btn modern-btn-primary">
+                    <i class="fas fa-crown me-1"></i>Assinar Plano
+                </a>
+            </div>
+        </div>
+        
+        <!-- Plano SNES -->
+        <div class="col-lg-3 col-md-4 col-sm-6">
+            <div class="modern-card h-100 text-center">
+                <div class="mb-3">
+                    <i class="fas fa-tv fa-2x text-gradient"></i>
+                </div>
+                <h4 class="retro-heading">Plano SNES</h4>
+                <p class="retro-text mb-3">Acesso completo a todos os jogos do SNES. Inclui 4 jogos clássicos desta plataforma.</p>
+                
+                <div class="mb-3">
+                    <span class="modern-badge modern-badge-primary fs-5">
+                        <i class="fas fa-dollar-sign me-1"></i>R$ 13,90/mês
+                    </span>
+                </div>
+                
+                <div class="mb-3">
+                    <span class="modern-badge modern-badge-success">
+                        <i class="fas fa-gamepad me-1"></i>4 jogos
+                    </span>
+                </div>
+                
+                <a href="#" class="modern-btn modern-btn-primary">
+                    <i class="fas fa-crown me-1"></i>Assinar Plano
+                </a>
+            </div>
+        </div>
+        
+        <!-- Plano NES -->
+        <div class="col-lg-3 col-md-4 col-sm-6">
+            <div class="modern-card h-100 text-center">
+                <div class="mb-3">
+                    <i class="fas fa-tv fa-2x text-gradient"></i>
+                </div>
+                <h4 class="retro-heading">Plano NES</h4>
+                <p class="retro-text mb-3">Acesso completo a todos os jogos do NES. Inclui 2 jogos clássicos desta plataforma.</p>
+                
+                <div class="mb-3">
+                    <span class="modern-badge modern-badge-primary fs-5">
+                        <i class="fas fa-dollar-sign me-1"></i>R$ 11,90/mês
+                    </span>
+                </div>
+                
+                <div class="mb-3">
+                    <span class="modern-badge modern-badge-success">
+                        <i class="fas fa-gamepad me-1"></i>2 jogos
+                    </span>
+                </div>
+                
+                <a href="#" class="modern-btn modern-btn-primary">
+                    <i class="fas fa-crown me-1"></i>Assinar Plano
+                </a>
+            </div>
+        </div>
+        
+        <!-- Plano Mega Drive -->
+        <div class="col-lg-3 col-md-4 col-sm-6">
+            <div class="modern-card h-100 text-center">
+                <div class="mb-3">
+                    <i class="fas fa-tv fa-2x text-gradient"></i>
+                </div>
+                <h4 class="retro-heading">Plano Mega Drive</h4>
+                <p class="retro-text mb-3">Acesso completo a todos os jogos do Mega Drive. Inclui 2 jogos clássicos desta plataforma.</p>
+                
+                <div class="mb-3">
+                    <span class="modern-badge modern-badge-primary fs-5">
+                        <i class="fas fa-dollar-sign me-1"></i>R$ 14,90/mês
+                    </span>
+                </div>
+                
+                <div class="mb-3">
+                    <span class="modern-badge modern-badge-success">
+                        <i class="fas fa-gamepad me-1"></i>2 jogos
+                    </span>
+                </div>
+                
+                <a href="#" class="modern-btn modern-btn-primary">
+                    <i class="fas fa-crown me-1"></i>Assinar Plano
+                </a>
+            </div>
+        </div>
+        
+        <!-- Plano GBA -->
+        <div class="col-lg-3 col-md-4 col-sm-6">
+            <div class="modern-card h-100 text-center">
+                <div class="mb-3">
+                    <i class="fas fa-mobile-alt fa-2x text-gradient"></i>
+                </div>
+                <h4 class="retro-heading">Plano GBA</h4>
+                <p class="retro-text mb-3">Acesso completo a todos os jogos do GBA. Inclui 2 jogos clássicos desta plataforma.</p>
+                
+                <div class="mb-3">
+                    <span class="modern-badge modern-badge-primary fs-5">
+                        <i class="fas fa-dollar-sign me-1"></i>R$ 12,90/mês
+                    </span>
+                </div>
+                
+                <div class="mb-3">
+                    <span class="modern-badge modern-badge-success">
+                        <i class="fas fa-gamepad me-1"></i>2 jogos
+                    </span>
+                </div>
+                
+                <a href="#" class="modern-btn modern-btn-primary">
+                    <i class="fas fa-crown me-1"></i>Assinar Plano
+                </a>
+            </div>
+        </div>
+        
+        <!-- Plano Game Boy -->
+        <div class="col-lg-3 col-md-4 col-sm-6">
+            <div class="modern-card h-100 text-center">
+                <div class="mb-3">
+                    <i class="fas fa-mobile-alt fa-2x text-gradient"></i>
+                </div>
+                <h4 class="retro-heading">Plano Game Boy</h4>
+                <p class="retro-text mb-3">Acesso completo a todos os jogos do Game Boy. Inclui 2 jogos clássicos desta plataforma.</p>
+                
+                <div class="mb-3">
+                    <span class="modern-badge modern-badge-primary fs-5">
+                        <i class="fas fa-dollar-sign me-1"></i>R$ 9,90/mês
+                    </span>
+                </div>
+                
+                <div class="mb-3">
+                    <span class="modern-badge modern-badge-success">
+                        <i class="fas fa-gamepad me-1"></i>2 jogos
+                    </span>
+                </div>
+                
+                <a href="#" class="modern-btn modern-btn-primary">
+                    <i class="fas fa-crown me-1"></i>Assinar Plano
+                </a>
+            </div>
+        </div>
+        
+        
+        <!-- Plano Neo Geo -->
+        <div class="col-lg-3 col-md-4 col-sm-6">
+            <div class="modern-card h-100 text-center">
+                <div class="mb-3">
+                    <i class="fas fa-tv fa-2x text-gradient"></i>
+                </div>
+                <h4 class="retro-heading">Plano Neo Geo</h4>
+                <p class="retro-text mb-3">Acesso completo a todos os jogos do Neo Geo. Inclui 1 jogo clássico desta plataforma.</p>
+                
+                <div class="mb-3">
+                    <span class="modern-badge modern-badge-primary fs-5">
+                        <i class="fas fa-dollar-sign me-1"></i>R$ 19,90/mês
+                    </span>
+                </div>
+                
+                <div class="mb-3">
+                    <span class="modern-badge modern-badge-success">
+                        <i class="fas fa-gamepad me-1"></i>1 jogo
+                    </span>
+                </div>
+                
+                <a href="#" class="modern-btn modern-btn-primary">
+                    <i class="fas fa-crown me-1"></i>Assinar Plano
+                </a>
+            </div>
+        </div>
+        
+        <!-- Plano Arcade -->
+        <div class="col-lg-3 col-md-4 col-sm-6">
+            <div class="modern-card h-100 text-center">
+                <div class="mb-3">
+                    <i class="fas fa-joystick fa-2x text-gradient"></i>
+                </div>
+                <h4 class="retro-heading">Plano Arcade</h4>
+                <p class="retro-text mb-3">Acesso completo a todos os jogos de Arcade. Inclui 1 jogo clássico desta plataforma.</p>
+                
+                <div class="mb-3">
+                    <span class="modern-badge modern-badge-primary fs-5">
+                        <i class="fas fa-dollar-sign me-1"></i>R$ 15,90/mês
+                    </span>
+                </div>
+                
+                <div class="mb-3">
+                    <span class="modern-badge modern-badge-success">
+                        <i class="fas fa-gamepad me-1"></i>1 jogo
+                    </span>
+                </div>
+                
+                <a href="#" class="modern-btn modern-btn-primary">
+                    <i class="fas fa-crown me-1"></i>Assinar Plano
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Estatísticas -->
+<section class="mb-5">
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="modern-card text-center animate-glow">
+                <i class="fas fa-gamepad fa-2x text-gradient mb-3"></i>
+                <h3 class="retro-heading">{{ games.count }}</h3>
+                <p class="retro-text">Jogos Disponíveis</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="modern-card text-center animate-glow">
+                <i class="fas fa-tv fa-2x text-gradient mb-3"></i>
+                <h3 class="retro-heading">{{ consoles|length }}</h3>
+                <p class="retro-text">Consoles Suportados</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="modern-card text-center animate-glow">
+                <i class="fas fa-crown fa-2x text-gradient mb-3"></i>
+                <h3 class="retro-heading">{{ plans.count }}</h3>
+                <p class="retro-text">Planos de Assinatura</p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Efeito de hover nos cards de jogos
+    const gameCards = document.querySelectorAll('.game-card-modern');
+    gameCards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-8px)';
+        });
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+    
+    // Efeito de hover nas imagens dos jogos
+    const gameImages = document.querySelectorAll('.game-image-modern');
+    gameImages.forEach(img => {
+        img.addEventListener('mouseenter', function() {
+            this.style.transform = 'scale(1.05)';
+        });
+        img.addEventListener('mouseleave', function() {
+            this.style.transform = 'scale(1)';
+        });
+    });
+    
+    // Efeito de hover nos botões de filtro
+    const filterBtns = document.querySelectorAll('.filter-btn-modern');
+    filterBtns.forEach(btn => {
+        btn.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+        });
+        btn.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+    
+    // Animação de entrada
+    const cards = document.querySelectorAll('.modern-card, .game-card-modern');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(30px)';
+        setTimeout(() => {
+            card.style.transition = 'all 0.6s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+});
+</script>
+{% endblock %}

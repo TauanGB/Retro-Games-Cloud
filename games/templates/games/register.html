@@ -1,0 +1,154 @@
+{% extends 'games/base.html' %}
+{% load static %}
+
+{% block title %}Registrar - Retro Games Cloud{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-4 col-md-6">
+        <div class="modern-card">
+            <div class="text-center mb-4">
+                <i class="fas fa-user-plus fa-3x text-gradient mb-3"></i>
+                <h1 class="retro-title">Registrar</h1>
+                <p class="retro-subtitle">Crie sua conta</p>
+            </div>
+            
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="id_username" class="modern-label">
+                        <i class="fas fa-user me-2"></i>Usuário
+                    </label>
+                    {{ form.username }}
+                    {% if form.username.errors %}
+                        <div class="text-danger small mt-1">
+                            {% for error in form.username.errors %}
+                                <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <label for="id_password1" class="modern-label">
+                        <i class="fas fa-lock me-2"></i>Senha
+                    </label>
+                    <div class="position-relative">
+                        {{ form.password1 }}
+                        <button type="button" class="btn btn-link position-absolute end-0 top-50 translate-middle-y pe-3" onclick="togglePassword('id_password1', 'toggleIcon1')">
+                            <i class="fas fa-eye" id="toggleIcon1"></i>
+                        </button>
+                    </div>
+                    {% if form.password1.errors %}
+                        <div class="text-danger small mt-1">
+                            {% for error in form.password1.errors %}
+                                <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <label for="id_password2" class="modern-label">
+                        <i class="fas fa-lock me-2"></i>Confirmar Senha
+                    </label>
+                    <div class="position-relative">
+                        {{ form.password2 }}
+                        <button type="button" class="btn btn-link position-absolute end-0 top-50 translate-middle-y pe-3" onclick="togglePassword('id_password2', 'toggleIcon2')">
+                            <i class="fas fa-eye" id="toggleIcon2"></i>
+                        </button>
+                    </div>
+                    {% if form.password2.errors %}
+                        <div class="text-danger small mt-1">
+                            {% for error in form.password2.errors %}
+                                <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <button type="submit" class="modern-btn modern-btn-primary">
+                        <i class="fas fa-user-plus me-2"></i>Registrar
+                    </button>
+                </div>
+            </form>
+            
+            <div class="text-center mt-4">
+                <p class="retro-text">
+                    Já tem uma conta? 
+                    <a href="{% url 'login' %}" class="text-gradient text-decoration-none">
+                        <i class="fas fa-sign-in-alt me-1"></i>Entrar
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Efeito de fundo -->
+<div class="retro-glow position-fixed top-50 start-50 translate-middle" style="z-index: -1;"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function togglePassword(inputId, iconId) {
+    const passwordInput = document.getElementById(inputId);
+    const toggleIcon = document.getElementById(iconId);
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.classList.remove('fa-eye');
+        toggleIcon.classList.add('fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        toggleIcon.classList.remove('fa-eye-slash');
+        toggleIcon.classList.add('fa-eye');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Aplicar classes CSS aos inputs do formulário
+    const inputs = document.querySelectorAll('input[type="text"], input[type="password"]');
+    inputs.forEach(input => {
+        input.classList.add('modern-input');
+    });
+    
+    // Animação de entrada
+    const card = document.querySelector('.modern-card');
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(30px)';
+    setTimeout(() => {
+        card.style.transition = 'all 0.6s ease';
+        card.style.opacity = '1';
+        card.style.transform = 'translateY(0)';
+    }, 200);
+    
+    // Efeito de digitação no título
+    const title = document.querySelector('.retro-title');
+    if (title) {
+        const text = title.textContent;
+        title.textContent = '';
+        let i = 0;
+        const typeWriter = () => {
+            if (i < text.length) {
+                title.textContent += text.charAt(i);
+                i++;
+                setTimeout(typeWriter, 100);
+            }
+        };
+        setTimeout(typeWriter, 500);
+    }
+    
+    // Efeito de foco nos inputs
+    inputs.forEach(input => {
+        input.addEventListener('focus', function() {
+            this.style.transform = 'scale(1.02)';
+        });
+        input.addEventListener('blur', function() {
+            this.style.transform = 'scale(1)';
+        });
+    });
+});
+</script>
+{% endblock %}

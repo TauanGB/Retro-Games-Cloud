@@ -1,0 +1,102 @@
+[
+	{
+		"nome": "Super Mario Bros. 3 (NES)",
+		"descricao": "Plataforma 2D com power-ups e mapas de mundo.",
+		"link_imagem": "https://cdn.mobygames.com/covers/4041316-super-mario-bros-3-nes-front-cover.jpg"
+	},
+	{
+		"nome": "The Legend of Zelda: A Link to the Past (SNES)",
+		"descricao": "Aventura top-down com dois mundos paralelos e dungeons memoráveis.",
+		"link_imagem": "https://cdn.mobygames.com/covers/4046275-the-legend-of-zelda-a-link-to-the-past-snes-back-cover.jpg"
+	},
+	{
+		"nome": "Super Metroid (SNES)",
+		"descricao": "Ação/ exploração não linear em Zebes com upgrades e backtracking.",
+		"link_imagem": "https://cdn.mobygames.com/covers/4525515-super-metroid-snes-front-cover.jpg"
+	},
+	{
+		"nome": "Sonic the Hedgehog 2 (Mega Drive/Genesis)",
+		"descricao": "Plataforma veloz com Tails e fases icônicas.",
+		"link_imagem": "https://cdn.mobygames.com/covers/4128226-sonic-the-hedgehog-2-genesis-front-cover.jpg"
+	},
+	{
+		"nome": "Streets of Rage 2 (Genesis)",
+		"descricao": "Beat em up cooperativo clássico com trilha marcante.",
+		"link_imagem": "https://cdn.mobygames.com/covers/4035172-streets-of-rage-2-genesis-front-cover.jpg"
+	},
+	{
+		"nome": "Mega Man 2 (NES)",
+		"descricao": "Ação/plataforma com chefes temáticos e armas absorvidas.",
+		"link_imagem": "https://cdn.mobygames.com/covers/4189509-mega-man-2-nes-front-cover.jpg"
+	},
+	{
+		"nome": "Castlevania: Symphony of the Night (PS1)",
+		"descricao": "Ação/exploração com elementos de RPG no castelo de Drácula.",
+		"link_imagem": "https://cdn.mobygames.com/covers/5973147-castlevania-symphony-of-the-night-playstation-front-cover.png"
+	},
+	{
+		"nome": "Chrono Trigger (SNES)",
+		"descricao": "RPG com viagens no tempo e múltiplos finais.",
+		"link_imagem": "https://cdn.mobygames.com/covers/3933436-chrono-trigger-snes-front-cover.jpg"
+	},
+	{
+		"nome": "Final Fantasy VII (PS1)",
+		"descricao": "RPG cinematográfico com sistema Materia.",
+		"link_imagem": "https://cdn.mobygames.com/covers/4306305-final-fantasy-vii-playstation-front-cover.jpg"
+	},
+	{
+		"nome": "DOOM (PC-DOS)",
+		"descricao": "FPS pioneiro com ação frenética em labirintos cheios de demônios.",
+		"link_imagem": "https://cdn.mobygames.com/covers/3947919-doom-dos-front-cover.jpg"
+	},
+	{
+		"nome": "Metal Slug (Neo Geo)",
+		"descricao": "Run n gun com animação detalhada e humor.",
+		"link_imagem": "https://cdn.mobygames.com/covers/6866945-metal-slug-super-vehicle-001-neo-geo-cd-front-cover.jpg"
+	},
+	{
+		"nome": "Super Street Fighter II (SNES)",
+		"descricao": "Luta 2D com elenco ampliado e golpes icônicos.",
+		"link_imagem": "https://cdn.mobygames.com/covers/4180952-super-street-fighter-ii-snes-front-cover.jpg"
+	},
+	{
+		"nome": "Pac-Man (Arcade/ports)",
+		"descricao": "Arcade de labirinto: coma pílulas e evite os fantasmas.",
+		"link_imagem": "https://cdn.mobygames.com/d81cffd0-abd1-11ed-8d2b-02420a00019e.webp"
+	},
+	{
+		"nome": "Tetris (Game Boy)",
+		"descricao": "Puzzle de encaixe de peças simples e viciante.",
+		"link_imagem": "[https://cdn.mobygames.com/covers/5453704-tetris-game-boy-front-cover.jpg"
+	},
+	{
+		"nome": "Donkey Kong Country 2: Diddy's Kong Quest (SNES)",
+		"descricao": "Plataforma 2D com Diddy e Dixie, muitos segredos.",
+		"link_imagem": "https://cdn.mobygames.com/covers/3946277-donkey-kong-country-2-diddys-kong-quest-snes-front-cover.jpg"
+	},
+	{
+		"nome": "Tony Hawks Pro Skater 2 (PS1)",
+		"descricao": "Skate com combos longos e objetivos por fase.",
+		"link_imagem": "https://cdn.mobygames.com/covers/5557286-tony-hawks-pro-skater-2-playstation-front-cover.png"
+	},
+	{
+		"nome": "Tekken 3 (PS1)",
+		"descricao": "Luta 3D fluida com elenco marcante.",
+		"link_imagem": "https://cdn.mobygames.com/covers/3987061-tekken-3-playstation-front-cover.jpg"
+	},
+	{
+		"nome": "The Legend of Zelda: Links Awakening (GB)",
+		"descricao": "Aventura portátil na Ilha Koholint com dungeons criativas.",
+		"link_imagem": "https://cdn.mobygames.com/covers/3983327-the-legend-of-zelda-links-awakening-game-boy-front-cover.jpg"
+	},
+	{
+		"nome": "Metroid Fusion (GBA)",
+		"descricao": "Ação/exploração mais linear e atmosfera de suspense.",
+		"link_imagem": "https://cdn.mobygames.com/covers/3989003-metroid-fusion-game-boy-advance-front-cover.jpg"
+	},
+	{
+		"nome": "Advance Wars (GBA)",
+		"descricao": "Estratégia em turnos com unidades variadas e mapas táticos.",
+		"link_imagem": "https://cdn.mobygames.com/covers/4111970-advance-wars-game-boy-advance-front-cover.jpg"
+	}
+]
