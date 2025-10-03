@@ -289,6 +289,9 @@ def simulate_payment_success(request, session_id):
             
             messages.success(request, f'Jogo {session.game.title} comprado com sucesso!')
             
+            # Redirecionar para página de confirmação com token
+            return redirect('purchase_confirmation', session_id=session.session_id)
+            
         elif session.plan:
             # Assinatura de plano
             subscription = Subscription.objects.create(
@@ -314,8 +317,73 @@ def simulate_payment_success(request, session_id):
                     print(f"Erro ao gerar token para {game.title}")
             
             messages.success(request, f'Assinatura do plano {session.plan.name} ativada com sucesso!')
+            
+            # Redirecionar para página de confirmação com tokens
+            return redirect('purchase_confirmation', session_id=session.session_id)
     
     return redirect('library')
+
+
+@login_required
+def purchase_confirmation(request, session_id):
+    """Página de confirmação de compra com token de acesso"""
+    session = get_object_or_404(PaymentSession, session_id=session_id, user=request.user)
+    
+    if session.status != 'completed':
+        messages.error(request, 'Esta sessão de pagamento não foi concluída.')
+        return redirect('home')
+    
+    # Obter tokens gerados para esta sessão
+    tokens = []
+    
+    if session.game:
+        # Compra individual
+        entitlement = Entitlement.objects.filter(
+            user=request.user,
+            game=session.game,
+            purchase__isnull=False
+        ).first()
+        
+        if entitlement:
+            game_token = entitlement.get_active_token()
+            if game_token:
+                tokens.append({
+                    'game': session.game,
+                    'token': game_token,
+                    'entitlement': entitlement
+                })
+    
+    elif session.plan:
+        # Assinatura de plano
+        subscription = Subscription.objects.filter(
+            user=request.user,
+            plan=session.plan,
+            status='active'
+        ).first()
+        
+        if subscription:
+            entitlements = Entitlement.objects.filter(
+                user=request.user,
+                subscription=subscription
+            ).select_related('game')
+            
+            for entitlement in entitlements:
+                game_token = entitlement.get_active_token()
+                if game_token:
+                    tokens.append({
+                        'game': entitlement.game,
+                        'token': game_token,
+                        'entitlement': entitlement
+                    })
+    
+    context = {
+        'session': session,
+        'tokens': tokens,
+        'item': session.game or session.plan,
+        'is_plan': bool(session.plan)
+    }
+    
+    return render(request, 'games/purchase_confirmation.html', context)
 
 
 @login_required

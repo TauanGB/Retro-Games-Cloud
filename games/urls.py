@@ -23,6 +23,7 @@ urlpatterns = [
     path('payment/<str:session_id>/', views.payment_session, name='payment_session'),
     path('payment/<str:session_id>/success/', views.simulate_payment_success, name='payment_success'),
     path('payment/<str:session_id>/failure/', views.simulate_payment_failure, name='payment_failure'),
+    path('purchase/<str:session_id>/confirmation/', views.purchase_confirmation, name='purchase_confirmation'),
     
     # Gerenciamento de assinatura
     path('subscription/<int:subscription_id>/cancel/', views.cancel_subscription, name='cancel_subscription'),
