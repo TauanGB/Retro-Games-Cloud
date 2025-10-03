@@ -1,12 +1,5 @@
 #!/bin/bash
 
-# Aguarda o banco de dados estar disponível
-echo "Aguardando banco de dados..."
-while ! nc -z db 5432; do
-  sleep 0.1
-done
-echo "Banco de dados disponível!"
-
 # Executa migrações
 echo "Executando migrações..."
 python manage.py migrate
@@ -25,6 +18,9 @@ else:
 # Coleta arquivos estáticos
 echo "Coletando arquivos estáticos..."
 python manage.py collectstatic --noinput
+
+python manage.py migrate
+python manage.py runserver 0.0.0.0:8000
 
 # Executa o comando passado como argumento
 exec "$@"
