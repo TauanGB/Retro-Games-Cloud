@@ -186,6 +186,53 @@ def library(request):
 
 
 @login_required
+def library_game_detail(request, game_id):
+    """Página de detalhes do jogo na biblioteca do usuário"""
+    game = get_object_or_404(Game, id=game_id, is_active=True)
+    
+    # Verificar se o usuário tem acesso ao jogo
+    entitlement = Entitlement.objects.filter(
+        user=request.user, 
+        game=game
+    ).first()
+    
+    if not entitlement:
+        messages.error(request, 'Você não possui acesso a este jogo.')
+        return redirect('library')
+    
+    # Obter token ativo para o jogo
+    game_token = None
+    if entitlement:
+        game_token = entitlement.get_active_token()
+    
+    # Verificar se é compra individual ou assinatura
+    is_purchased = entitlement.purchase is not None
+    is_subscription = entitlement.subscription is not None
+    
+    # Informações adicionais
+    purchase_info = None
+    subscription_info = None
+    
+    if is_purchased and entitlement.purchase:
+        purchase_info = entitlement.purchase
+    elif is_subscription and entitlement.subscription:
+        subscription_info = entitlement.subscription
+    
+    context = {
+        'game': game,
+        'entitlement': entitlement,
+        'game_token': game_token,
+        'is_purchased': is_purchased,
+        'is_subscription': is_subscription,
+        'purchase_info': purchase_info,
+        'subscription_info': subscription_info,
+        'has_valid_token': game_token is not None
+    }
+    
+    return render(request, 'games/library_game_detail.html', context)
+
+
+@login_required
 def checkout_game(request, game_id):
     """Iniciar checkout para compra de jogo"""
     game = get_object_or_404(Game, id=game_id, is_active=True)

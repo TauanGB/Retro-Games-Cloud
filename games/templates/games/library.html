@@ -70,8 +70,8 @@
                     <h5 class="game-title-modern">{{ entitlement.game.title }}</h5>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="game-console-modern">{{ entitlement.game.console }}</span>
-                        <a href="{% url 'game_detail' entitlement.game.id %}" class="modern-btn modern-btn-primary btn-sm">
-                            <i class="fas fa-play me-1"></i>Jogar
+                        <a href="{% url 'library_game_detail' entitlement.game.id %}" class="modern-btn modern-btn-primary btn-sm">
+                            <i class="fas fa-key me-1"></i>Ver Token
                         </a>
                     </div>
                 </div>
@@ -105,8 +105,8 @@
                     <h5 class="game-title-modern">{{ item.game.title }}</h5>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="game-console-modern">{{ item.game.console }}</span>
-                        <a href="{% url 'game_detail' item.game.id %}" class="modern-btn modern-btn-primary btn-sm">
-                            <i class="fas fa-play me-1"></i>Jogar
+                        <a href="{% url 'library_game_detail' item.game.id %}" class="modern-btn modern-btn-primary btn-sm">
+                            <i class="fas fa-key me-1"></i>Ver Token
                         </a>
                     </div>
                 </div>

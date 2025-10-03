@@ -1,8 +1,141 @@
+# ===========================================
+# RETRO GAMES CLOUD - REQUIREMENTS
+# ===========================================
+
+# Django Framework
 Django==4.2.7
+
+# Processamento de Imagens
 Pillow==10.1.0
+
+# Banco de Dados
 psycopg2-binary==2.9.9
-python-decouple==3.8
-gunicorn==21.2.0
 dj-database-url==2.1.0
 
+# Configuração de Ambiente
+python-decouple==3.8
 
+# Servidor WSGI para Produção
+gunicorn==21.2.0
+
+# ===========================================
+# DESENVOLVIMENTO E TESTES
+# ===========================================
+
+# Testes
+pytest==7.4.3
+pytest-django==4.7.0
+coverage==7.3.2
+
+# Qualidade de Código
+flake8==6.1.0
+black==23.11.0
+isort==5.12.0
+
+# Debug e Desenvolvimento
+django-debug-toolbar==4.2.0
+django-extensions==3.2.3
+
+# ===========================================
+# SEGURANÇA E PERFORMANCE
+# ===========================================
+
+# Segurança
+django-cors-headers==4.3.1
+django-ratelimit==4.1.0
+cryptography==41.0.7
+
+# Cache e Performance
+redis==5.0.1
+django-redis==5.4.0
+whitenoise==6.6.0
+
+# Monitoramento
+sentry-sdk==1.38.0
+
+# ===========================================
+# API E SERIALIZAÇÃO
+# ===========================================
+
+# Django REST Framework
+djangorestframework==3.14.0
+django-filter==23.3
+drf-spectacular==0.26.5
+
+# JSON Web Tokens
+PyJWT==2.8.0
+
+# ===========================================
+# FORMULÁRIOS E VALIDAÇÃO
+# ===========================================
+
+# Formulários
+django-crispy-forms==2.1
+crispy-bootstrap5==0.7
+
+# Validação
+email-validator==2.1.0
+validators==0.22.0
+python-slugify==8.0.1
+
+# ===========================================
+# UTILITÁRIOS E PROCESSAMENTO
+# ===========================================
+
+# Data e Hora
+python-dateutil==2.8.2
+pytz==2023.3
+
+# HTTP Requests
+requests==2.31.0
+
+# Processamento de Arquivos
+python-magic==0.4.27
+
+# Utilitários de Sistema
+psutil==5.9.6
+
+# ===========================================
+# INTERNACIONALIZAÇÃO
+# ===========================================
+
+# Tradução
+django-modeltranslation==0.18.11
+
+# ===========================================
+# BACKUP E MIGRAÇÃO
+# ===========================================
+
+# Backup
+django-dbbackup==3.3.0
+
+# ===========================================
+# COMPRESSÃO E OTIMIZAÇÃO
+# ===========================================
+
+# Compressão
+django-compressor==4.4
+
+# Imagens
+django-imagekit==4.1.0
+
+# ===========================================
+# ADMIN E INTERFACE
+# ===========================================
+
+# Admin Interface
+django-admin-interface==0.25.0
+
+# ===========================================
+# SITEMAP E SEO
+# ===========================================
+
+# Sitemap
+django-sitemaps==1.0.0
+
+# ===========================================
+# VALIDAÇÃO DE SENHAS
+# ===========================================
+
+# Validação de Senhas
+django-password-validators==1.3.0

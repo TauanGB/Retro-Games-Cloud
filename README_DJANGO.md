@@ -215,3 +215,5 @@ Para evoluir o MVP:
 **Desenvolvido com Django 4.2.7 + Bootstrap 5.3.0**
 
 
+
+

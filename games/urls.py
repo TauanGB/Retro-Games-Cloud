@@ -14,6 +14,7 @@ urlpatterns = [
     
     # Páginas autenticadas
     path('library/', views.library, name='library'),
+    path('library/game/<int:game_id>/', views.library_game_detail, name='library_game_detail'),
     
     # Checkout
     path('checkout/game/<int:game_id>/', views.checkout_game, name='checkout_game'),
