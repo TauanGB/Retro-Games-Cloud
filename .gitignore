@@ -61,6 +61,10 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 
+# Django migrations (uncomment if you want to ignore them)
+# */migrations/*.py
+# !*/migrations/__init__.py
+
 # Flask stuff:
 instance/
 .webassets-cache
@@ -181,9 +185,11 @@ cython_debug/
 .cursorindexingignore
 
 # Retro Games Cloud specific
-# Media files (user uploads)
-media/
-!media/.gitkeep
+# Media files (user uploads) - keep structure but ignore content
+media/game_covers/*
+media/user_uploads/*
+!media/game_covers/.gitkeep
+!media/user_uploads/.gitkeep
 
 # Game ROMs and assets (if any)
 roms/
@@ -199,10 +205,12 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Environment variables
+# Environment variables (keep examples)
 .env
 .env.local
 .env.production
+!env.example
+!env.docker
 
 # Logs
 logs/
@@ -237,3 +245,21 @@ coverage.xml
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# Docker volumes and data
+docker-data/
+postgres-data/
+
+# Temporary files
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

@@ -14,6 +14,7 @@ RUN apt-get update \
         postgresql-client \
         build-essential \
         libpq-dev \
+        netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
 # Copia e instala dependências Python
