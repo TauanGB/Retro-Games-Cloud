@@ -1,338 +1,256 @@
 # Configuração do Nginx para Retro Games Cloud
 
-Este documento descreve como configurar e executar o sistema Retro Games Cloud usando Nginx como proxy reverso.
+Este documento explica como o sistema está configurado para funcionar com Nginx como proxy reverso.
 
-## 📋 Pré-requisitos
+## 📋 Estrutura da Configuração
 
-- Docker (versão 20.10 ou superior)
-- Docker Compose (versão 2.0 ou superior)
+O sistema está configurado para rodar completamente com Nginx usando Docker Compose:
 
-## 🚀 Início Rápido
+- **Nginx**: Servidor web e proxy reverso (porta 80/443)
+- **Django/Gunicorn**: Aplicação web (porta 8000 interna)
+- **PostgreSQL**: Banco de dados (opcional, pode usar SQLite)
 
-### 1. Preparação
+## 🚀 Como Iniciar
+
+### 1. Verificar as Configurações
 
 Certifique-se de que o arquivo `env.docker` está configurado corretamente:
 
 ```bash
-# Copie o arquivo de exemplo se necessário
-cp env.example env.docker
+# Para usar PostgreSQL
+DATABASE_URL=postgres://postgres:postgres@db:5432/retro_games
+
+# Para usar SQLite (padrão)
+DATABASE_URL=sqlite:///db.sqlite3
 ```
 
-Edite `env.docker` com suas configurações, especialmente:
-- `SECRET_KEY`: Chave secreta do Django
-- `ALLOWED_HOSTS`: Domínios permitidos
-- `CSRF_TRUSTED_ORIGINS`: Origens confiáveis para CSRF
-
-### 2. Construir e Iniciar os Containers
+### 2. Iniciar os Serviços
 
 ```bash
-# Construir as imagens
-docker-compose build
+# Construir e iniciar todos os serviços
+docker-compose up -d --build
 
-# Iniciar os serviços
-docker-compose up -d
-
-# Verificar o status
-docker-compose ps
-```
-
-### 3. Verificar os Logs
-
-```bash
-# Logs de todos os serviços
+# Ver logs
 docker-compose logs -f
 
-# Logs apenas do Django
-docker-compose logs -f web
-
-# Logs apenas do Nginx
+# Ver logs apenas do nginx
 docker-compose logs -f nginx
+
+# Ver logs apenas do Django
+docker-compose logs -f web
 ```
 
-### 4. Acessar a Aplicação
+### 3. Acessar a Aplicação
 
+Após iniciar, acesse:
 - **Aplicação**: http://localhost
 - **Admin Django**: http://localhost/admin
-- **Health Check**: http://localhost/health/
 
-Credenciais padrão do superusuário (apenas em DEBUG=True):
-- Usuário: `admin`
-- Senha: `admin123`
+## 📁 Arquivos de Configuração
 
-## 🏗️ Arquitetura
+### nginx.conf
 
-O sistema está configurado com:
+Configuração principal do Nginx com:
+- Proxy reverso para Django
+- Servir arquivos estáticos (`/static/`)
+- Servir arquivos de mídia (`/media/`)
+- Rate limiting para APIs e login
+- Compressão Gzip
+- Headers de segurança
+- Health check endpoint (`/health/`)
 
-```
-┌─────────────┐
-│   Cliente   │
-└──────┬──────┘
-       │
-       │ HTTP/HTTPS (porta 80/443)
-       ▼
-┌─────────────┐
-│    Nginx    │ ← Proxy Reverso
-│  (porta 80) │
-└──────┬──────┘
-       │
-       │ Proxy HTTP (porta 8000)
-       ▼
-┌─────────────┐
-│    Django   │ ← Gunicorn WSGI
-│  (porta 8000)│
-└─────────────┘
-```
+### docker-compose.yml
 
-### Serviços
+Define três serviços:
+1. **web**: Aplicação Django com Gunicorn
+2. **nginx**: Servidor Nginx
+3. **db**: PostgreSQL (opcional)
 
-1. **Web (Django)**: Aplicação Django rodando com Gunicorn
-2. **Nginx**: Proxy reverso que serve arquivos estáticos e encaminha requisições
+## 🔧 Configurações do Django
 
-## 📁 Estrutura de Arquivos
+O Django está configurado para trabalhar com Nginx através de:
 
-```
-.
-├── docker-compose.yml      # Orquestração dos serviços
-├── Dockerfile              # Imagem do Django
-├── Dockerfile.nginx        # Imagem do Nginx
-├── nginx.conf              # Configuração do Nginx
-├── docker-entrypoint.sh    # Script de inicialização do Django
-├── env.docker              # Variáveis de ambiente para Docker
-└── nginx_logs/             # Logs do Nginx (criado automaticamente)
+```python
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 ```
 
-## ⚙️ Configurações
+Isso permite que o Django reconheça corretamente:
+- O host original da requisição
+- O protocolo (HTTP/HTTPS)
+- O IP real do cliente
 
-### Nginx
+## 📊 Monitoramento
 
-O arquivo `nginx.conf` está configurado para:
+### Logs do Nginx
 
-- Servir arquivos estáticos (`/static/`) diretamente
-- Servir arquivos de mídia (`/media/`) diretamente
-- Encaminhar todas as outras requisições para o Django
-- Suportar uploads de até 100MB
-- Compressão gzip para melhor performance
-- Headers de cache para arquivos estáticos
+Os logs do Nginx são salvos em `nginx_logs/`:
+- `access.log`: Requisições HTTP
+- `error.log`: Erros do Nginx
 
-### Django
+Para visualizar em tempo real:
+```bash
+tail -f nginx_logs/access.log
+tail -f nginx_logs/error.log
+```
 
-Configurado para funcionar atrás de proxy reverso:
+### Health Check
 
-- `USE_X_FORWARDED_HOST = True`: Respeita o host do proxy
-- `SECURE_PROXY_SSL_HEADER`: Configurado para HTTPS (quando habilitado)
-- `STATIC_ROOT` e `MEDIA_ROOT`: Configurados para volumes Docker
+O Nginx expõe um endpoint de health check:
+```bash
+curl http://localhost/health/
+# Retorna: healthy
+```
 
-### Volumes
+## 🔒 Segurança
 
-O docker-compose cria volumes nomeados para:
+### Rate Limiting
 
-- `static_volume`: Arquivos estáticos coletados pelo Django
-- `media_volume`: Arquivos de mídia enviados pelos usuários
+O Nginx está configurado com rate limiting:
 
-Esses volumes são compartilhados entre os containers.
+- **Login/Register**: 5 requisições por minuto por IP
+- **API**: 10 requisições por segundo por IP
 
-## 🔧 Comandos Úteis
+### Headers de Segurança
 
-### Gerenciamento de Containers
+Headers de segurança configurados:
+- `X-Frame-Options: SAMEORIGIN`
+- `X-Content-Type-Options: nosniff`
+- `X-XSS-Protection: 1; mode=block`
+
+### HTTPS (Produção)
+
+Para configurar HTTPS em produção:
+
+1. Adicione certificados SSL ao diretório do projeto
+2. Atualize `nginx.conf` para incluir configuração SSL
+3. Configure redirecionamento HTTP → HTTPS
+4. Atualize `CSRF_TRUSTED_ORIGINS` no `env.docker`
+
+## 🛠️ Comandos Úteis
+
+### Reiniciar Serviços
 
 ```bash
-# Iniciar serviços
-docker-compose up -d
+# Reiniciar todos os serviços
+docker-compose restart
 
-# Parar serviços
-docker-compose down
-
-# Parar e remover volumes (CUIDADO: remove dados)
-docker-compose down -v
-
-# Reiniciar um serviço específico
-docker-compose restart web
+# Reiniciar apenas o nginx
 docker-compose restart nginx
 
-# Reconstruir após mudanças
-docker-compose up -d --build
+# Reiniciar apenas o Django
+docker-compose restart web
 ```
 
-### Comandos Django
+### Verificar Status
+
+```bash
+# Status dos containers
+docker-compose ps
+
+# Verificar logs de erro
+docker-compose logs --tail=50 web
+docker-compose logs --tail=50 nginx
+```
+
+### Testar Configuração do Nginx
+
+```bash
+# Testar configuração do nginx (dentro do container)
+docker-compose exec nginx nginx -t
+```
+
+### Coletar Arquivos Estáticos
+
+```bash
+# Coletar arquivos estáticos
+docker-compose exec web python manage.py collectstatic --noinput
+```
+
+### Executar Migrações
 
 ```bash
 # Executar migrações
 docker-compose exec web python manage.py migrate
+```
+
+### Acessar Shell do Django
+
+```bash
+# Shell do Django
+docker-compose exec web python manage.py shell
 
 # Criar superusuário
 docker-compose exec web python manage.py createsuperuser
-
-# Coletar arquivos estáticos
-docker-compose exec web python manage.py collectstatic
-
-# Acessar shell do Django
-docker-compose exec web python manage.py shell
-
-# Executar comandos customizados
-docker-compose exec web python manage.py <comando>
-```
-
-### Logs e Debug
-
-```bash
-# Ver logs em tempo real
-docker-compose logs -f
-
-# Ver últimos 100 linhas
-docker-compose logs --tail=100
-
-# Ver logs de erro do Nginx
-docker-compose exec nginx tail -f /var/log/nginx/error.log
-
-# Verificar configuração do Nginx
-docker-compose exec nginx nginx -t
-```
-
-## 🔒 Configuração HTTPS/SSL
-
-Para habilitar HTTPS:
-
-1. Obtenha certificados SSL (Let's Encrypt, etc.)
-2. Coloque os certificados em um diretório `ssl/`:
-   - `ssl/cert.pem`
-   - `ssl/key.pem`
-
-3. Descomente e ajuste a seção HTTPS no `nginx.conf`:
-
-```nginx
-server {
-    listen 443 ssl http2;
-    server_name seu-dominio.com;
-    
-    ssl_certificate /etc/nginx/ssl/cert.pem;
-    ssl_certificate_key /etc/nginx/ssl/key.pem;
-    # ... resto da configuração
-}
-```
-
-4. Adicione o volume no `docker-compose.yml`:
-
-```yaml
-volumes:
-  - ./ssl:/etc/nginx/ssl:ro
-```
-
-5. Configure as variáveis de ambiente:
-
-```env
-SECURE_SSL_REDIRECT=True
-CSRF_TRUSTED_ORIGINS=https://seu-dominio.com
-```
-
-6. Reinicie os serviços:
-
-```bash
-docker-compose down
-docker-compose up -d
 ```
 
 ## 🐛 Troubleshooting
 
-### Problema: Arquivos estáticos não aparecem
+### Nginx não inicia
 
-**Solução**: Execute o collectstatic novamente:
-```bash
-docker-compose exec web python manage.py collectstatic --noinput
-```
+1. Verifique se a porta 80 está disponível:
+   ```bash
+   netstat -an | grep :80
+   ```
 
-### Problema: Erro 502 Bad Gateway
+2. Verifique a configuração do Nginx:
+   ```bash
+   docker-compose exec nginx nginx -t
+   ```
 
-**Solução**: Verifique se o container `web` está rodando:
-```bash
-docker-compose ps
-docker-compose logs web
-```
+3. Verifique os logs:
+   ```bash
+   docker-compose logs nginx
+   ```
 
-### Problema: Erro de permissão
+### Arquivos estáticos não aparecem
 
-**Solução**: Verifique as permissões dos volumes:
-```bash
-docker-compose exec web ls -la /app/staticfiles
-docker-compose exec nginx ls -la /app/staticfiles
-```
+1. Verifique se o diretório `staticfiles` existe e tem arquivos
+2. Verifique as permissões:
+   ```bash
+   ls -la staticfiles/
+   ```
 
-### Problema: Nginx não inicia
+3. Recolete os arquivos estáticos:
+   ```bash
+   docker-compose exec web python manage.py collectstatic --noinput
+   ```
 
-**Solução**: Verifique a sintaxe do nginx.conf:
-```bash
-docker-compose exec nginx nginx -t
-```
+### Erro 502 Bad Gateway
 
-### Problema: CSRF token inválido
+Isso geralmente significa que o Nginx não consegue se conectar ao Django:
 
-**Solução**: Verifique `CSRF_TRUSTED_ORIGINS` no `env.docker`:
-```env
-CSRF_TRUSTED_ORIGINS=http://localhost,http://127.0.0.1,http://seu-dominio.com
-```
+1. Verifique se o container `web` está rodando:
+   ```bash
+   docker-compose ps web
+   ```
 
-## 📊 Monitoramento
+2. Verifique os logs do Django:
+   ```bash
+   docker-compose logs web
+   ```
 
-### Health Checks
+3. Verifique se o Gunicorn está respondendo:
+   ```bash
+   docker-compose exec web curl http://localhost:8000/health/
+   ```
 
-O sistema inclui health checks automáticos:
+## 📝 Notas de Produção
 
-- **Django**: `/health/` - Verifica se a aplicação e banco estão funcionando
-- **Nginx**: Verifica a sintaxe da configuração
+Para produção, considere:
 
-Para verificar manualmente:
+1. **Variáveis de Ambiente**: Use `.env` com valores seguros
+2. **Secret Key**: Gere uma nova SECRET_KEY para produção
+3. **DEBUG**: Defina `DEBUG=False`
+4. **ALLOWED_HOSTS**: Configure com seu domínio
+5. **HTTPS**: Configure certificados SSL
+6. **Backup**: Configure backups do banco de dados
+7. **Monitoramento**: Configure monitoramento de logs e performance
 
-```bash
-# Django
-curl http://localhost/health/
+## 🔗 Recursos
 
-# Nginx
-docker-compose exec nginx nginx -t
-```
-
-### Logs
-
-Os logs são salvos em:
-
-- **Django**: Saída padrão (via `docker-compose logs`)
-- **Nginx**: `./nginx_logs/` (no host) e `/var/log/nginx/` (no container)
-
-## 🔄 Atualização
-
-Para atualizar o sistema:
-
-```bash
-# Parar serviços
-docker-compose down
-
-# Atualizar código (git pull, etc.)
-
-# Reconstruir imagens
-docker-compose build
-
-# Iniciar novamente
-docker-compose up -d
-
-# Executar migrações se necessário
-docker-compose exec web python manage.py migrate
-```
-
-## 📝 Notas Importantes
-
-1. **Produção**: Altere `DEBUG=False` e configure uma `SECRET_KEY` forte
-2. **Banco de Dados**: Para produção, use PostgreSQL ou MySQL ao invés de SQLite
-3. **Segurança**: Configure HTTPS antes de colocar em produção
-4. **Backup**: Configure backups regulares do banco de dados e arquivos de mídia
-5. **Performance**: Ajuste o número de workers do Gunicorn conforme necessário
-
-## 🆘 Suporte
-
-Para problemas ou dúvidas:
-
-1. Verifique os logs: `docker-compose logs`
-2. Consulte a documentação do Django: https://docs.djangoproject.com/
-3. Consulte a documentação do Nginx: https://nginx.org/en/docs/
-
----
-
-**Desenvolvido com ❤️ para a comunidade de jogos retrô**
+- [Documentação do Nginx](https://nginx.org/en/docs/)
+- [Documentação do Docker Compose](https://docs.docker.com/compose/)
+- [Deploy Django com Nginx e Gunicorn](https://docs.djangoproject.com/en/stable/howto/deployment/)
 

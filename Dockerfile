@@ -12,7 +12,6 @@ WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
-        curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copia e instala dependências Python
@@ -25,15 +24,12 @@ COPY . /app/
 # Cria diretórios necessários
 RUN mkdir -p /app/staticfiles /app/media
 
-# Coleta arquivos estáticos (será recolhido no entrypoint também)
-# RUN python manage.py collectstatic --noinput
-
-# Expõe a porta 8000
-EXPOSE 8000
-
 # Script de entrypoint
 COPY docker-entrypoint.sh /app/
 RUN chmod +x /app/docker-entrypoint.sh
 
-# Comando padrão
+# Expõe a porta 8000
+EXPOSE 8000
+
+# Comando padrão (será sobrescrito pelo docker-compose)
 CMD ["/app/docker-entrypoint.sh"]

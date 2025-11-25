@@ -1,3 +1,8 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
 # Python
 __pycache__/
 *.py[cod]
@@ -7,13 +12,16 @@ __pycache__/
 *.egg-info/
 dist/
 build/
-*.egg
-
-# Ambiente Virtual
 venv/
 env/
 ENV/
 .venv
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
 
 # IDEs
 .vscode/
@@ -21,24 +29,7 @@ ENV/
 *.swp
 *.swo
 *~
-
-# Django
-*.log
-db.sqlite3
-db.sqlite3-journal
-/media
-/staticfiles
-
-# Arquivos de ambiente
-.env
-.env.local
-.env.*.local
-*.env
-
-# Git
-.git/
-.gitignore
-.gitattributes
+.DS_Store
 
 # Docker
 docker-compose.yml
@@ -57,24 +48,27 @@ docs/
 htmlcov/
 .tox/
 
-# Logs
-logs/
-*.log
-nginx_logs/
-
-# OS
-.DS_Store
-Thumbs.db
-*.bak
-
-# Temporários
+# Arquivos temporários
 *.tmp
-*.temp
-.cache/
+*.bak
+*.swp
+*.swo
+*~
 
-# Arquivos de desenvolvimento
+# Logs
+*.log
+logs/
+nginx_logs/*.log
+
+# Arquivos de ambiente (serão copiados separadamente)
+.env
+.env.local
+.env.*.local
+
+# Arquivos de mídia e estáticos (serão montados como volumes)
+media/
+staticfiles/
+
+# Outros
 Futuras modificacoes.txt
-*.txt
-
-# Node modules (se houver)
-node_modules/
+API_DOCUMENTATION.md
