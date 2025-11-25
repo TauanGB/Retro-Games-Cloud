@@ -60,5 +60,5 @@ echo "=========================================="
 echo "Aplicação pronta para receber requisições"
 echo "=========================================="
 
-# Executa o comando passado como argumento (geralmente gunicorn via docker-compose)
+# Executa o comando passado como argumento (runserver em modo debug)
 exec "$@"

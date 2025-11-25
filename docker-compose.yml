@@ -29,7 +29,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    command: gunicorn retro_games_cloud.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120 --access-logfile - --error-logfile -
+    command: python manage.py runserver 0.0.0.0:8000
 
   db:
     image: postgres:15-alpine
