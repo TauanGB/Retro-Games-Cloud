@@ -1,5 +1,8 @@
 version: '3.8'
 
+# Configuração SEM Nginx para debug
+# Use: docker-compose -f docker-compose-debug.yml up -d
+
 services:
   web:
     build: .
@@ -19,10 +22,6 @@ services:
       - "8000:8000"
     networks:
       - retro_network
-    # DB é opcional - só necessário se usar PostgreSQL
-    # depends_on:
-    #   db:
-    #     condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/')"]
       interval: 30s
