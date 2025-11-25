@@ -60,8 +60,7 @@ echo "=========================================="
 echo "Aplicação pronta para receber requisições"
 echo "=========================================="
 
-# Executa o comando passado como argumento, ou runserver por padrão
-
-echo "Iniciando servidor de desenvolvimento Django..."
-exec python manage.py runserver 0.0.0.0:8000
+# Executa o comando passado como argumento (runserver do docker-compose)
+echo "Executando comando: $@"
+exec "$@"
 
