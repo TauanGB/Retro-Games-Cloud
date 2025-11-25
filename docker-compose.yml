@@ -29,9 +29,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    # Usa runserver do Django (definido no docker-entrypoint.sh)
-    # Se quiser passar argumentos adicionais, use:
-    # command: python manage.py runserver 0.0.0.0:8000 --noreload
+    command: python manage.py runserver 0.0.0.0:8000
 
   db:
     image: postgres:15-alpine
