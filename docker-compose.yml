@@ -15,8 +15,8 @@ services:
       - ./media:/app/media
       - ./staticfiles:/app/staticfiles
       - ./db.sqlite3:/app/db.sqlite3
-    expose:
-      - "8000"
+    ports:
+      - "8000:8000"
     networks:
       - retro_network
     # DB é opcional - só necessário se usar PostgreSQL
@@ -31,29 +31,30 @@ services:
       start_period: 40s
     command: gunicorn retro_games_cloud.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120 --access-logfile - --error-logfile -
 
-  nginx:
-    image: nginx:alpine
-    container_name: retro_games_nginx
-    restart: unless-stopped
-    ports:
-      - "${NGINX_HTTP_PORT:-80}:80"
-      - "${NGINX_HTTPS_PORT:-443}:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./staticfiles:/app/staticfiles:ro
-      - ./media:/app/media:ro
-      - ./nginx_logs:/var/log/nginx
-    depends_on:
-      web:
-        condition: service_healthy
-    networks:
-      - retro_network
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+  # NGINX DESABILITADO TEMPORARIAMENTE PARA DEBUG
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: retro_games_nginx
+  #   restart: unless-stopped
+  #   ports:
+  #     - "${NGINX_HTTP_PORT:-80}:80"
+  #     - "${NGINX_HTTPS_PORT:-443}:443"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./staticfiles:/app/staticfiles:ro
+  #     - ./media:/app/media:ro
+  #     - ./nginx_logs:/var/log/nginx
+  #   depends_on:
+  #     web:
+  #       condition: service_healthy
+  #   networks:
+  #     - retro_network
+  #   healthcheck:
+  #     test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health/"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 40s
 
   db:
     image: postgres:15-alpine
