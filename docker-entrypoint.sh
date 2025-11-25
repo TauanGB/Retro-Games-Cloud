@@ -60,5 +60,10 @@ echo "=========================================="
 echo "Aplicação pronta para receber requisições"
 echo "=========================================="
 
-# Executa o comando passado como argumento (runserver em modo debug)
-exec "$@"
+# Executa o comando passado como argumento, ou runserver por padrão
+if [ $# -eq 0 ]; then
+    echo "Iniciando servidor de desenvolvimento Django..."
+    exec python manage.py runserver 0.0.0.0:8000
+else
+    exec "$@"
+fi
