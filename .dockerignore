@@ -1,73 +1,80 @@
-# Git
-.git
-.gitignore
-.gitattributes
-
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
 *.egg-info/
-.installed.cfg
+dist/
+build/
 *.egg
-MANIFEST
 
-# Virtual environments
-.env
-.venv
-env/
+# Ambiente Virtual
 venv/
+env/
 ENV/
-env.bak/
-venv.bak/
+.venv
 
-# IDE
+# IDEs
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# OS
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
 # Django
 *.log
-local_settings.py
 db.sqlite3
 db.sqlite3-journal
+/media
+/staticfiles
 
-# Media files (will be mounted as volume)
-media/
+# Arquivos de ambiente
+.env
+.env.local
+.env.*.local
+*.env
 
-# Static files (will be collected in container)
-staticfiles/
+# Git
+.git/
+.gitignore
+.gitattributes
 
-# Documentation
+# Docker
+docker-compose.yml
+docker-compose.*.yml
+Dockerfile*
+.dockerignore
+
+# Documentação
 README.md
-README_DJANGO.md
+*.md
+docs/
 
-# Scripts de população
-populate_*.py
-create_*.py
+# Testes
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
 
+# Logs
+logs/
+*.log
+nginx_logs/
+
+# OS
+.DS_Store
+Thumbs.db
+*.bak
+
+# Temporários
+*.tmp
+*.temp
+.cache/
+
+# Arquivos de desenvolvimento
+Futuras modificacoes.txt
+*.txt
+
+# Node modules (se houver)
+node_modules/

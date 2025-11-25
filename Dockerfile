@@ -12,6 +12,7 @@ WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
+        curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copia e instala dependências Python
@@ -24,8 +25,8 @@ COPY . /app/
 # Cria diretórios necessários
 RUN mkdir -p /app/staticfiles /app/media
 
-# Coleta arquivos estáticos
-RUN python manage.py collectstatic --noinput
+# Coleta arquivos estáticos (será recolhido no entrypoint também)
+# RUN python manage.py collectstatic --noinput
 
 # Expõe a porta 8000
 EXPOSE 8000

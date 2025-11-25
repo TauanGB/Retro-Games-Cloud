@@ -37,4 +37,7 @@ urlpatterns = [
     
     # Admin/Setup Endpoints
     path('api/setup-data/', views.setup_initial_data, name='setup_initial_data'),
+    
+    # Health Check
+    path('health/', views.health_check, name='health_check'),
 ]

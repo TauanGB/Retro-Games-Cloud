@@ -31,7 +31,10 @@ DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
 
 # Configuração CSRF para produção via variáveis de ambiente
-CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='http://localhost:8000,http://127.0.0.1:8000').split(',')
+CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='http://localhost:8000,http://127.0.0.1:8000,http://localhost,http://127.0.0.1').split(',')
+
+# Configurações para funcionar atrás de proxy reverso (Nginx)
+USE_X_FORWARDED_HOST = True
 
 # Application definition
 
@@ -54,6 +57,11 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# Configurações adicionais para proxy reverso (Nginx)
+# Configura o header para detectar HTTPS quando estiver atrás do proxy
+if config('SECURE_SSL_REDIRECT', default=False, cast=bool):
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 ROOT_URLCONF = 'retro_games_cloud.urls'
 
@@ -131,7 +139,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
@@ -139,8 +147,15 @@ STATICFILES_DIRS = [
 # Configuração para arquivos estáticos em produção
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-MEDIA_URL = 'media/'
+MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Configuração para servir arquivos estáticos em desenvolvimento
+# Em produção, o Nginx serve esses arquivos diretamente
+if not DEBUG:
+    # Quando não estiver em DEBUG, confiamos no Nginx para servir arquivos estáticos
+    # Isso melhora a performance
+    pass
 
 # Configurações de segurança para produção
 SECURE_BROWSER_XSS_FILTER = True
