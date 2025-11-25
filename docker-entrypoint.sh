@@ -60,7 +60,27 @@ echo "=========================================="
 echo "Aplicação pronta para receber requisições"
 echo "=========================================="
 
-# Executa o comando passado como argumento (runserver do docker-compose)
-echo "Executando comando: $@"
-exec "$@"
+# Executa o servidor WSGI (runserver ou gunicorn)
+if [ $# -eq 0 ]; then
+    # Se não receber comando, usa variável de ambiente WSGI_SERVER
+    WSGI_SERVER=${WSGI_SERVER:-runserver}
+    
+    if [ "$WSGI_SERVER" = "gunicorn" ]; then
+        echo "Iniciando Gunicorn..."
+        exec gunicorn retro_games_cloud.wsgi:application \
+            --config gunicorn_config.py \
+            --bind 0.0.0.0:8000 \
+            --workers ${GUNICORN_WORKERS:-3} \
+            --timeout 120 \
+            --access-logfile - \
+            --error-logfile - \
+            --log-level ${GUNICORN_LOG_LEVEL:-info}
+    else
+        echo "Iniciando Django runserver..."
+        exec python manage.py runserver 0.0.0.0:8000
+    fi
+else
+    echo "Executando comando: $@"
+    exec "$@"
+fi
 

@@ -31,5 +31,5 @@ RUN chmod +x /app/docker-entrypoint.sh
 # Expõe a porta 8000
 EXPOSE 8000
 
-# Comando padrão (será sobrescrito pelo docker-compose)
-CMD ["/app/docker-entrypoint.sh"]
+# Entrypoint será sempre executado, comando será passado como argumento
+ENTRYPOINT ["/app/docker-entrypoint.sh"]

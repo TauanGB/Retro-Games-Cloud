@@ -11,6 +11,9 @@ services:
       - DATABASE_URL=${DATABASE_URL:-sqlite:///db.sqlite3}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,web}
       - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS:-http://localhost,http://127.0.0.1}
+      - WSGI_SERVER=${WSGI_SERVER:-runserver}
+      - GUNICORN_WORKERS=${GUNICORN_WORKERS:-3}
+      - GUNICORN_LOG_LEVEL=${GUNICORN_LOG_LEVEL:-info}
     volumes:
       - ./media:/app/media
       - ./staticfiles:/app/staticfiles
@@ -24,12 +27,14 @@ services:
     #   db:
     #     condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    command: python manage.py runserver 0.0.0.0:8000
+      test: ["CMD-SHELL", "python -c 'import socket; s = socket.socket(); s.connect((\"localhost\", 8000)); s.close()'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    # Comando será determinado pelo env.docker (WSGI_SERVER)
+    # Para forçar runserver: command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+    # Para forçar gunicorn: command: ["gunicorn", "retro_games_cloud.wsgi:application", "--config", "gunicorn_config.py", "--bind", "0.0.0.0:8000"]
 
   nginx:
     image: nginx:alpine
