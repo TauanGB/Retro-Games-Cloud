@@ -25,6 +25,27 @@
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{% static 'css/modern-retro.css' %}">
+    <style>
+        /* Estilos para o botão de instalação PWA */
+        .pwa-install-btn {
+            border: none !important;
+            background: none !important;
+            padding: 0.5rem 1rem !important;
+            color: inherit !important;
+            transition: all 0.3s ease !important;
+        }
+        .pwa-install-btn:hover {
+            color: #667eea !important;
+            transform: translateY(-2px);
+        }
+        .pwa-install-btn i {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+    </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -63,6 +84,12 @@
                         </a>
                     </li>
                     {% endif %}
+                    <!-- Botão de Instalação PWA (apenas quando logado) -->
+                    <li class="nav-item">
+                        <button id="pwa-install-button" class="nav-link btn btn-link text-decoration-none pwa-install-btn" style="display: none;" title="Instalar App no dispositivo">
+                            <i class="fas fa-download me-1"></i>Instalar App
+                        </button>
+                    </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-user me-1"></i>{{ user.username }}
@@ -147,6 +174,19 @@
             });
         }
     </script>
+    
+    <!-- PWA Install Script (apenas quando usuário está logado) -->
+    {% if user.is_authenticated %}
+    <script>
+        // Variável global para indicar que o usuário está logado
+        window.USER_IS_AUTHENTICATED = true;
+    </script>
+    <script src="{% static 'games/js/pwa-install.js' %}"></script>
+    {% else %}
+    <script>
+        window.USER_IS_AUTHENTICATED = false;
+    </script>
+    {% endif %}
     
     <!-- Custom JS -->
     {% block extra_js %}{% endblock %}

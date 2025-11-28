@@ -6,10 +6,10 @@
 Django==4.2.7
 
 # Processamento de Imagens
-Pillow==10.1.0
+Pillow==10.4.0
 
 # Banco de Dados
-psycopg2-binary==2.9.9
+psycopg2-binary==2.9.11
 dj-database-url==2.1.0
 
 # Configuração de Ambiente
