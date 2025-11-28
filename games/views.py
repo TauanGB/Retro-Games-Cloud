@@ -1,111 +1,79 @@
-from django.shortcuts import render, redirect, get_object_or_404
+import json
+import requests
+import time
+from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth import login, authenticate, logout
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib import messages
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse, Http404
 from django.views.decorators.http import require_http_methods
-from django.utils import timezone
-from django.db import transaction
-from django.views.decorators.cache import never_cache
-from django.core.management import call_command
-from django.core.management.base import CommandError
-from datetime import timedelta
-import uuid
-import json
-import io
-import sys
-from contextlib import redirect_stdout
+from decouple import config
 
-from .models import Game, Plan, Purchase, Subscription, Entitlement, PaymentSession, GameToken
+from .models import Game, GameRequest
+from .forms import GameRequestForm, AdminGameRequestForm
+from .utils import search_games_on_retrogames, search_multiple_games
 
 
 def home(request):
-    """Página inicial com catálogo público de jogos e planos"""
-    games = Game.objects.filter(is_active=True)
-    plans = Plan.objects.filter(is_active=True)
+    """
+    Página inicial do TDE - PWA educacional de jogos retro.
+    Apresenta o contexto do trabalho e destaca alguns jogos.
+    """
+    # Jogos em destaque (primeiros 6 jogos ativos)
+    featured_games = Game.objects.filter(is_active=True)[:6]
     
-    # Filtrar por console se especificado
-    console_filter = request.GET.get('console')
-    if console_filter and console_filter != 'Todos':
-        games = games.filter(console=console_filter)
-    
-    # Obter consoles únicos para filtros (excluindo PC)
-    consoles = Game.objects.filter(is_active=True).exclude(console='PC').values_list('console', flat=True).distinct().order_by('console')
+    # Todos os jogos ativos para estatísticas
+    all_games = Game.objects.filter(is_active=True)
     
     context = {
-        'games': games,
-        'plans': plans,
-        'consoles': consoles,
-        'current_filter': console_filter or 'Todos'
+        'featured_games': featured_games,
+        'total_games': all_games.count(),
     }
     
     return render(request, 'games/home.html', context)
 
 
-def game_detail(request, game_id):
-    """Página de detalhes do jogo"""
-    game = get_object_or_404(Game, id=game_id, is_active=True)
+def catalog(request):
+    """
+    Página de catálogo completo de jogos retro.
+    Lista simples de todos os jogos ativos.
+    """
+    games = Game.objects.filter(is_active=True).order_by('title')
     
-    # Verificar se o usuário já tem acesso ao jogo
-    user_has_access = False
-    if request.user.is_authenticated:
-        user_has_access = Entitlement.objects.filter(
-            user=request.user, 
-            game=game
-        ).exists()
+    context = {
+        'games': games,
+    }
     
-    # Buscar planos que contêm este jogo
-    plans_with_game = Plan.objects.filter(
-        games=game,
+    return render(request, 'games/catalog.html', context)
+
+
+def game_detail(request, slug):
+    """
+    Página de detalhes do jogo com iframe do emulador.
+    O jogo é acessível publicamente, sem necessidade de autenticação.
+    """
+    game = get_object_or_404(Game, slug=slug, is_active=True)
+    
+    # Jogos relacionados (outros jogos ativos, limitado a 4)
+    related_games = Game.objects.filter(
         is_active=True
-    ).distinct()
-    
-    # Verificar se o usuário já tem assinaturas ativas para estes planos
-    user_active_subscriptions = []
-    if request.user.is_authenticated:
-        user_active_subscriptions = Subscription.objects.filter(
-            user=request.user,
-            plan__in=plans_with_game,
-            status='active',
-            current_period_end__gt=timezone.now()
-        ).values_list('plan_id', flat=True)
+    ).exclude(id=game.id)[:4]
     
     context = {
         'game': game,
-        'user_has_access': user_has_access,
-        'plans_with_game': plans_with_game,
-        'user_active_subscriptions': user_active_subscriptions
+        'related_games': related_games,
     }
     
     return render(request, 'games/game_detail.html', context)
 
 
-def plan_detail(request, plan_id):
-    """Página de detalhes do plano"""
-    plan = get_object_or_404(Plan, id=plan_id, is_active=True)
-    
-    # Verificar se o usuário já tem assinatura ativa
-    user_has_subscription = False
-    if request.user.is_authenticated:
-        user_has_subscription = Subscription.objects.filter(
-            user=request.user,
-            plan=plan,
-            status='active',
-            current_period_end__gt=timezone.now()
-        ).exists()
-    
-    context = {
-        'plan': plan,
-        'user_has_subscription': user_has_subscription
-    }
-    
-    return render(request, 'games/plan_detail.html', context)
-
+# ============================================================================
+# AUTENTICAÇÃO (OPCIONAL - mantida para demonstração/futuros recursos)
+# ============================================================================
 
 def user_login(request):
-    """Página de login"""
+    """Página de login (opcional para o TDE)"""
     if request.method == 'POST':
         username = request.POST['username']
         password = request.POST['password']
@@ -129,7 +97,7 @@ def user_logout(request):
 
 
 def register(request):
-    """Página de registro"""
+    """Página de registro (opcional para o TDE)"""
     if request.method == 'POST':
         form = UserCreationForm(request.POST)
         if form.is_valid():
@@ -143,484 +111,26 @@ def register(request):
     return render(request, 'games/register.html', {'form': form})
 
 
-@login_required
-def library(request):
-    """Biblioteca do usuário"""
-    # Jogos comprados individualmente
-    purchased_games = Entitlement.objects.filter(
-        user=request.user,
-        purchase__isnull=False,
-        is_perpetual=True
-    ).select_related('game')
-    
-    # Jogos de assinaturas ativas
-    active_subscriptions = Subscription.objects.filter(
-        user=request.user,
-        status='active',
-        current_period_end__gt=timezone.now()
-    ).select_related('plan')
-    
-    subscription_games = []
-    for subscription in active_subscriptions:
-        for game in subscription.plan.games.filter(is_active=True):
-            subscription_games.append({
-                'game': game,
-                'subscription': subscription,
-                'plan': subscription.plan
-            })
-    
-    # Tokens de acesso aos jogos
-    game_tokens = GameToken.objects.filter(
-        user=request.user,
-        status='active'
-    ).select_related('game', 'entitlement')
-    
-    context = {
-        'purchased_games': purchased_games,
-        'subscription_games': subscription_games,
-        'active_subscriptions': active_subscriptions,
-        'game_tokens': game_tokens
-    }
-    
-    return render(request, 'games/library.html', context)
+# ============================================================================
+# API ENDPOINTS (simplificados)
+# ============================================================================
 
-
-@login_required
-def library_game_detail(request, game_id):
-    """Página de detalhes do jogo na biblioteca do usuário"""
-    game = get_object_or_404(Game, id=game_id, is_active=True)
-    
-    # Verificar se o usuário tem acesso ao jogo
-    entitlement = Entitlement.objects.filter(
-        user=request.user, 
-        game=game
-    ).first()
-    
-    if not entitlement:
-        messages.error(request, 'Você não possui acesso a este jogo.')
-        return redirect('library')
-    
-    # Obter token ativo para o jogo
-    game_token = None
-    if entitlement:
-        game_token = entitlement.get_active_token()
-    
-    # Verificar se é compra individual ou assinatura
-    is_purchased = entitlement.purchase is not None
-    is_subscription = entitlement.subscription is not None
-    
-    # Informações adicionais
-    purchase_info = None
-    subscription_info = None
-    
-    if is_purchased and entitlement.purchase:
-        purchase_info = entitlement.purchase
-    elif is_subscription and entitlement.subscription:
-        subscription_info = entitlement.subscription
-    
-    context = {
-        'game': game,
-        'entitlement': entitlement,
-        'game_token': game_token,
-        'is_purchased': is_purchased,
-        'is_subscription': is_subscription,
-        'purchase_info': purchase_info,
-        'subscription_info': subscription_info,
-        'has_valid_token': game_token is not None
-    }
-    
-    return render(request, 'games/library_game_detail.html', context)
-
-
-@login_required
-def checkout_game(request, game_id):
-    """Iniciar checkout para compra de jogo"""
-    game = get_object_or_404(Game, id=game_id, is_active=True)
-    
-    # Verificar se já tem o jogo
-    if Entitlement.objects.filter(user=request.user, game=game).exists():
-        messages.warning(request, 'Você já possui este jogo!')
-        return redirect('game_detail', game_id=game_id)
-    
-    # Criar sessão de pagamento
-    session = PaymentSession.objects.create(
-        user=request.user,
-        game=game,
-        amount=game.price
-    )
-    
-    return redirect('payment_session', session_id=session.session_id)
-
-
-@login_required
-def checkout_plan(request, plan_id):
-    """Iniciar checkout para assinatura de plano"""
-    plan = get_object_or_404(Plan, id=plan_id, is_active=True)
-    
-    # Verificar se já tem assinatura ativa
-    if Subscription.objects.filter(
-        user=request.user,
-        plan=plan,
-        status='active',
-        current_period_end__gt=timezone.now()
-    ).exists():
-        messages.warning(request, 'Você já possui uma assinatura ativa para este plano!')
-        return redirect('plan_detail', plan_id=plan_id)
-    
-    # Criar sessão de pagamento
-    session = PaymentSession.objects.create(
-        user=request.user,
-        plan=plan,
-        amount=plan.price
-    )
-    
-    return redirect('payment_session', session_id=session.session_id)
-
-
-@login_required
-def payment_session(request, session_id):
-    """Página de simulação de pagamento"""
-    session = get_object_or_404(PaymentSession, session_id=session_id, user=request.user)
-    
-    if session.status != 'pending':
-        messages.warning(request, 'Esta sessão de pagamento já foi processada.')
-        return redirect('home')
-    
-    context = {
-        'session': session,
-        'item': session.game or session.plan
-    }
-    
-    return render(request, 'games/payment_session.html', context)
-
-
-@login_required
-@require_http_methods(["POST"])
-def simulate_payment_success(request, session_id):
-    """Simular pagamento bem-sucedido"""
-    session = get_object_or_404(PaymentSession, session_id=session_id, user=request.user)
-    
-    if session.status != 'pending':
-        messages.error(request, 'Esta sessão já foi processada.')
-        return redirect('home')
-    
-    with transaction.atomic():
-        # Atualizar status da sessão
-        session.status = 'completed'
-        session.completed_at = timezone.now()
-        session.save()
-        
-        if session.game:
-            # Compra de jogo individual
-            purchase = Purchase.objects.create(
-                user=request.user,
-                game=session.game,
-                amount=session.amount,
-                status='completed'
-            )
-            
-            # Criar entitlement perpétuo
-            entitlement = Entitlement.objects.create(
-                user=request.user,
-                game=session.game,
-                purchase=purchase,
-                is_perpetual=True
-            )
-            
-            # Gerar token de acesso para o jogo automaticamente
-            game_token = entitlement.create_game_token()
-            if game_token:
-                print(f"Token gerado automaticamente: {game_token.token[:8]}... para {session.game.title}")
-            else:
-                print(f"Erro ao gerar token para {session.game.title}")
-            
-            messages.success(request, f'Jogo {session.game.title} comprado com sucesso!')
-            
-            # Redirecionar para página de confirmação com token
-            return redirect('purchase_confirmation', session_id=session.session_id)
-            
-        elif session.plan:
-            # Assinatura de plano
-            subscription = Subscription.objects.create(
-                user=request.user,
-                plan=session.plan,
-                current_period_end=timezone.now() + timedelta(days=30)
-            )
-            
-            # Criar entitlements para todos os jogos do plano
-            for game in session.plan.games.filter(is_active=True):
-                entitlement, created = Entitlement.objects.get_or_create(
-                    user=request.user,
-                    game=game,
-                    subscription=subscription,
-                    is_perpetual=False
-                )
-                
-                # Gerar token automaticamente (método verifica se já existe)
-                game_token = entitlement.create_game_token()
-                if game_token and created:
-                    print(f"Token gerado automaticamente: {game_token.token[:8]}... para {game.title}")
-                elif not game_token:
-                    print(f"Erro ao gerar token para {game.title}")
-            
-            messages.success(request, f'Assinatura do plano {session.plan.name} ativada com sucesso!')
-            
-            # Redirecionar para página de confirmação com tokens
-            return redirect('purchase_confirmation', session_id=session.session_id)
-    
-    return redirect('library')
-
-
-@login_required
-def purchase_confirmation(request, session_id):
-    """Página de confirmação de compra com token de acesso"""
-    session = get_object_or_404(PaymentSession, session_id=session_id, user=request.user)
-    
-    if session.status != 'completed':
-        messages.error(request, 'Esta sessão de pagamento não foi concluída.')
-        return redirect('home')
-    
-    # Obter tokens gerados para esta sessão
-    tokens = []
-    
-    if session.game:
-        # Compra individual
-        entitlement = Entitlement.objects.filter(
-            user=request.user,
-            game=session.game,
-            purchase__isnull=False
-        ).first()
-        
-        if entitlement:
-            game_token = entitlement.get_active_token()
-            if game_token:
-                tokens.append({
-                    'game': session.game,
-                    'token': game_token,
-                    'entitlement': entitlement
-                })
-    
-    elif session.plan:
-        # Assinatura de plano
-        subscription = Subscription.objects.filter(
-            user=request.user,
-            plan=session.plan,
-            status='active'
-        ).first()
-        
-        if subscription:
-            entitlements = Entitlement.objects.filter(
-                user=request.user,
-                subscription=subscription
-            ).select_related('game')
-            
-            for entitlement in entitlements:
-                game_token = entitlement.get_active_token()
-                if game_token:
-                    tokens.append({
-                        'game': entitlement.game,
-                        'token': game_token,
-                        'entitlement': entitlement
-                    })
-    
-    context = {
-        'session': session,
-        'tokens': tokens,
-        'item': session.game or session.plan,
-        'is_plan': bool(session.plan)
-    }
-    
-    return render(request, 'games/purchase_confirmation.html', context)
-
-
-@login_required
-@require_http_methods(["POST"])
-def simulate_payment_failure(request, session_id):
-    """Simular falha no pagamento"""
-    session = get_object_or_404(PaymentSession, session_id=session_id, user=request.user)
-    
-    if session.status != 'pending':
-        messages.error(request, 'Esta sessão já foi processada.')
-        return redirect('home')
-    
-    session.status = 'failed'
-    session.completed_at = timezone.now()
-    session.save()
-    
-    messages.error(request, 'Pagamento falhou. Tente novamente.')
-    
-    if session.game:
-        return redirect('game_detail', game_id=session.game.id)
-    else:
-        return redirect('plan_detail', plan_id=session.plan.id)
-
-
-@login_required
-@require_http_methods(["POST"])
-def cancel_subscription(request, subscription_id):
-    """Cancelar assinatura"""
-    subscription = get_object_or_404(
-        Subscription, 
-        id=subscription_id, 
-        user=request.user,
-        status='active'
-    )
-    
-    subscription.status = 'cancelled'
-    subscription.cancelled_at = timezone.now()
-    subscription.save()
-    
-    messages.success(request, f'Assinatura do plano {subscription.plan.name} cancelada. Você manterá acesso até {subscription.current_period_end.strftime("%d/%m/%Y")}.')
-    
-    return redirect('library')
-
-
-# API Endpoints para validação de tokens
-
-@csrf_exempt
-@require_http_methods(["POST"])
-@never_cache
-def api_validate_token(request):
-    """
-    API para validar token de acesso a jogo
-    Endpoint: POST /api/validate-token/
-    
-    Body JSON:
-    {
-        "token": "token_string",
-        "game_id": 123 (opcional)
-    }
-    
-    Response:
-    {
-        "valid": true/false,
-        "game": {
-            "id": 123,
-            "title": "Nome do Jogo",
-            "console": "SNES"
-        },
-        "user": {
-            "id": 456,
-            "username": "usuario"
-        },
-        "entitlement": {
-            "is_perpetual": true/false,
-            "granted_date": "2024-01-01T00:00:00Z"
-        },
-        "token_info": {
-            "created_at": "2024-01-01T00:00:00Z",
-            "last_used_at": "2024-01-01T00:00:00Z",
-            "usage_count": 5
-        }
-    }
-    """
-    try:
-        data = json.loads(request.body)
-        token = data.get('token')
-        game_id = data.get('game_id')
-        
-        if not token:
-            return JsonResponse({
-                'valid': False,
-                'error': 'Token é obrigatório'
-            }, status=400)
-        
-        # Validar token
-        validation_result = GameToken.validate_token(token, game_id)
-        
-        if not validation_result:
-            return JsonResponse({
-                'valid': False,
-                'error': 'Token inválido ou expirado'
-            }, status=401)
-        
-        game_token = validation_result['token']
-        game = validation_result['game']
-        user = validation_result['user']
-        entitlement = validation_result['entitlement']
-        
-        return JsonResponse({
-            'valid': True,
-            'game': {
-                'id': game.id,
-                'title': game.title,
-                'console': game.console,
-                'description': game.description
-            },
-            'user': {
-                'id': user.id,
-                'username': user.username,
-                'email': user.email
-            },
-            'entitlement': {
-                'is_perpetual': entitlement.is_perpetual,
-                'granted_date': entitlement.granted_date.isoformat()
-            },
-            'token_info': {
-                'created_at': game_token.created_at.isoformat(),
-                'last_used_at': game_token.last_used_at.isoformat() if game_token.last_used_at else None,
-                'usage_count': game_token.usage_count,
-                'expires_at': game_token.expires_at.isoformat() if game_token.expires_at else None
-            }
-        })
-        
-    except json.JSONDecodeError:
-        return JsonResponse({
-            'valid': False,
-            'error': 'JSON inválido'
-        }, status=400)
-    except Exception as e:
-        return JsonResponse({
-            'valid': False,
-            'error': 'Erro interno do servidor'
-        }, status=500)
-
-
-@csrf_exempt
 @require_http_methods(["GET"])
-@never_cache
-def api_get_game_info(request, game_id):
+def api_get_game_info(request, slug):
     """
-    API para obter informações de um jogo específico
-    Endpoint: GET /api/game/{game_id}/
-    
-    Response:
-    {
-        "id": 123,
-        "title": "Nome do Jogo",
-        "console": "SNES",
-        "description": "Descrição do jogo",
-        "price": "29.99",
-        "cover_image": "url_da_capa",
-        "categories": [
-            {
-                "id": 1,
-                "name": "Ação",
-                "color": "#ff0000"
-            }
-        ]
-    }
+    API para obter informações de um jogo específico.
+    Endpoint: GET /api/game/<slug>/
     """
     try:
-        game = get_object_or_404(Game, id=game_id, is_active=True)
+        game = get_object_or_404(Game, slug=slug, is_active=True)
         
         return JsonResponse({
             'id': game.id,
             'title': game.title,
-            'console': game.console,
+            'slug': game.slug,
             'description': game.description,
-            'price': str(game.price),
             'cover_image': game.cover_image,
             'rom_url': game.rom_url,
-            'categories': [
-                {
-                    'id': cat.id,
-                    'name': cat.name,
-                    'color': cat.color,
-                    'icon': cat.icon
-                }
-                for cat in game.categories.filter(is_active=True)
-            ]
         })
         
     except Exception as e:
@@ -629,194 +139,686 @@ def api_get_game_info(request, game_id):
         }, status=404)
 
 
-@csrf_exempt
-@require_http_methods(["POST"])
-@never_cache
-def api_revoke_token(request):
+# ============================================================================
+# SOLICITAÇÃO DE JOGOS (para usuários autenticados)
+# ============================================================================
+
+@login_required
+def request_game(request):
     """
-    API para revogar um token
-    Endpoint: POST /api/revoke-token/
+    View protegida por login para usuários solicitarem a inclusão de um novo jogo.
+    Apenas usuários autenticados podem acessar esta página.
+    """
+    if request.method == 'POST':
+        form = GameRequestForm(request.POST)
+        if form.is_valid():
+            game_request = form.save(commit=False)
+            game_request.user = request.user
+            game_request.status = 'pending'
+            game_request.save()
+            
+            messages.success(
+                request,
+                'Seu pedido foi enviado com sucesso! O administrador irá analisar sua solicitação em breve.'
+            )
+            return redirect('my_game_requests')
+    else:
+        form = GameRequestForm()
     
-    Body JSON:
-    {
-        "token": "token_string"
+    context = {
+        'form': form,
     }
     
-    Response:
-    {
-        "success": true/false,
-        "message": "Token revogado com sucesso"
-    }
-    """
-    try:
-        data = json.loads(request.body)
-        token = data.get('token')
-        
-        if not token:
-            return JsonResponse({
-                'success': False,
-                'error': 'Token é obrigatório'
-            }, status=400)
-        
-        # Buscar token pelo hash
-        import hashlib
-        token_hash = hashlib.sha256(token.encode()).hexdigest()
-        
-        try:
-            game_token = GameToken.objects.get(token_hash=token_hash, status='active')
-            game_token.revoke()
-            
-            return JsonResponse({
-                'success': True,
-                'message': 'Token revogado com sucesso'
-            })
-            
-        except GameToken.DoesNotExist:
-            return JsonResponse({
-                'success': False,
-                'error': 'Token não encontrado'
-            }, status=404)
-        
-    except json.JSONDecodeError:
-        return JsonResponse({
-            'success': False,
-            'error': 'JSON inválido'
-        }, status=400)
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': 'Erro interno do servidor'
-        }, status=500)
+    return render(request, 'games/request_game.html', context)
 
 
 @login_required
-@require_http_methods(["GET"])
-def api_user_tokens(request):
+def my_game_requests(request):
     """
-    API para listar tokens do usuário logado
-    Endpoint: GET /api/user/tokens/
+    View protegida por login para usuários visualizarem seus pedidos anteriores.
+    Apenas usuários autenticados podem acessar esta página e veem apenas seus próprios pedidos.
+    """
+    game_requests = GameRequest.objects.filter(user=request.user).order_by('-created_at')
     
-    Response:
-    {
-        "tokens": [
-            {
-                "id": 123,
-                "game": {
-                    "id": 456,
-                    "title": "Nome do Jogo",
-                    "console": "SNES"
-                },
-                "token": "token_string",
-                "status": "active",
-                "created_at": "2024-01-01T00:00:00Z",
-                "last_used_at": "2024-01-01T00:00:00Z",
-                "usage_count": 5
-            }
-        ]
+    context = {
+        'game_requests': game_requests,
+        'total_requests': game_requests.count(),
+        'pending_count': game_requests.filter(status='pending').count(),
+        'approved_count': game_requests.filter(status='approved').count(),
+        'rejected_count': game_requests.filter(status='rejected').count(),
     }
+    
+    return render(request, 'games/my_game_requests.html', context)
+
+
+# ============================================================================
+# ADMINISTRAÇÃO DE REQUISIÇÕES (apenas para staff)
+# ============================================================================
+
+def staff_required(user):
+    """Verifica se o usuário é staff"""
+    return user.is_authenticated and user.is_staff
+
+
+@user_passes_test(staff_required, login_url='home')
+def admin_game_requests_list(request):
     """
+    View para administradores visualizarem todas as requisições de jogos.
+    Apenas usuários staff podem acessar esta página.
+    Esta página permite ao administrador ver os pedidos e preparar as consultas para IA.
+    """
+    # Filtro por status (opcional via query parameter)
+    status_filter = request.GET.get('status', '')
+    ready_filter = request.GET.get('ready_for_ai', '')
+    
+    # Query base
+    game_requests = GameRequest.objects.all().select_related('user')
+    
+    # Aplicar filtros
+    if status_filter:
+        game_requests = game_requests.filter(status=status_filter)
+    
+    if ready_filter == 'true':
+        game_requests = game_requests.filter(ready_for_ai=True)
+    elif ready_filter == 'false':
+        game_requests = game_requests.filter(ready_for_ai=False)
+    
+    # Ordenação padrão: mais recentes primeiro
+    game_requests = game_requests.order_by('-created_at')
+    
+    # Estatísticas
+    total = GameRequest.objects.count()
+    pending = GameRequest.objects.filter(status='pending').count()
+    approved = GameRequest.objects.filter(status='approved').count()
+    rejected = GameRequest.objects.filter(status='rejected').count()
+    ready_for_ai_count = GameRequest.objects.filter(ready_for_ai=True).count()
+    
+    context = {
+        'game_requests': game_requests,
+        'total': total,
+        'pending': pending,
+        'approved': approved,
+        'rejected': rejected,
+        'ready_for_ai_count': ready_for_ai_count,
+        'current_status_filter': status_filter,
+        'current_ready_filter': ready_filter,
+    }
+    
+    return render(request, 'games/admin_game_requests_list.html', context)
+
+
+@user_passes_test(staff_required, login_url='home')
+def admin_game_request_detail(request, pk):
+    """
+    View para administradores visualizarem e editarem uma requisição específica.
+    Apenas usuários staff podem acessar esta página.
+    Permite editar a consulta para IA e marcar como pronta para processamento.
+    """
+    game_request = get_object_or_404(GameRequest, pk=pk)
+    
+    # Se ai_query estiver vazio, preencher com sugestão padrão
+    if not game_request.ai_query:
+        game_request.ai_query = f"{game_request.title} jogo retro"
+        game_request.save(update_fields=['ai_query'])
+    
+    if request.method == 'POST':
+        form = AdminGameRequestForm(request.POST, instance=game_request)
+        if form.is_valid():
+            # Salvar o texto da consulta
+            form.save()
+            
+            # Se for requisição AJAX, enviar direto para a API
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                # Atualizar o objeto do banco antes de chamar approve
+                game_request.refresh_from_db()
+                # Chamar a função de aprovação diretamente (ela já retorna JSON para AJAX)
+                try:
+                    return admin_approve_request(request, pk)
+                except Exception as e:
+                    import traceback
+                    print(f"Erro ao chamar admin_approve_request: {traceback.format_exc()}")
+                    return JsonResponse({
+                        'error': f'Erro ao enviar para API: {str(e)}'
+                    }, status=500)
+            
+            # Se não for AJAX, apenas salvar e redirecionar
+            messages.success(request, 'Texto para busca na IA atualizado! Clique em "Aprovar e Buscar na API" para enviar.')
+            return redirect('admin_game_request_detail', pk=game_request.pk)
+    else:
+        form = AdminGameRequestForm(instance=game_request)
+    
+    # Preparar dados para exibição (JSON de exemplo)
+    ai_data_example = {
+        "ai_query": game_request.ai_query,
+        "title": game_request.title,
+        "description": game_request.details or "",
+    }
+    
+    ai_data_json = json.dumps(ai_data_example, indent=2, ensure_ascii=False)
+    
+    # Formatar ai_response_data para exibição se existir
+    ai_response_json = None
+    if game_request.ai_response_data:
+        ai_response_json = json.dumps(game_request.ai_response_data, indent=2, ensure_ascii=False)
+    
+    context = {
+        'game_request': game_request,
+        'form': form,
+        'ai_data_json': ai_data_json,
+        'ai_response_json': ai_response_json,
+    }
+    
+    return render(request, 'games/admin_game_request_detail.html', context)
+
+
+# ============================================================================
+# AÇÕES DE ADMINISTRAÇÃO (Aprovar/Rejeitar e Integração com API)
+# ============================================================================
+
+# URL base da API externa
+API_BASE_URL = "https://simple-game-name-collector-v1-ca4edf88-5b8a-ef2ee057.crewai.com"
+
+# Token de autenticação da API (lido do .env)
+API_TOKEN = config('GAME_COLLECTOR_API_TOKEN', default='')
+
+# Função helper para obter headers de autenticação
+def get_api_headers():
+    """Retorna os headers necessários para autenticação na API"""
+    headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+    }
+    
+    # Adicionar token de autenticação se disponível
+    if API_TOKEN:
+        # Tentar diferentes formatos de autenticação comuns
+        if API_TOKEN.startswith('Bearer ') or API_TOKEN.startswith('Token '):
+            headers['Authorization'] = API_TOKEN
+        else:
+            # Se não tiver prefixo, adicionar Bearer
+            headers['Authorization'] = f'Bearer {API_TOKEN}'
+        # Também tentar como X-API-Key (algumas APIs usam isso)
+        headers['X-API-Key'] = API_TOKEN
+        # Algumas APIs também usam X-Auth-Token
+        headers['X-Auth-Token'] = API_TOKEN
+    else:
+        print("AVISO: GAME_COLLECTOR_API_TOKEN não configurado no .env!")
+    
+    return headers
+
+
+@user_passes_test(staff_required, login_url='home')
+@require_http_methods(["POST"])
+def admin_approve_request(request, pk):
+    """
+    Aprova uma requisição de jogo e inicia o processo de busca na API externa.
+    Suporta requisições AJAX e requisições normais.
+    """
+    game_request = get_object_or_404(GameRequest, pk=pk)
+    
+    if game_request.status == 'approved':
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'error': 'Esta requisição já foi aprovada.'
+            }, status=400)
+        messages.warning(request, 'Esta requisição já foi aprovada.')
+        return redirect('admin_game_request_detail', pk=pk)
+    
     try:
-        tokens = GameToken.objects.filter(
-            user=request.user,
-            status='active'
-        ).select_related('game')
+        # Garantir que ai_query existe
+        if not game_request.ai_query:
+            game_request.ai_query = f"{game_request.title} jogo retro"
+            game_request.save(update_fields=['ai_query'])
         
-        tokens_data = []
-        for token in tokens:
-            tokens_data.append({
-                'id': token.id,
-                'game': {
-                    'id': token.game.id,
-                    'title': token.game.title,
-                    'console': token.game.console
-                },
-                'token': token.token,
-                'status': token.status,
-                'created_at': token.created_at.isoformat(),
-                'last_used_at': token.last_used_at.isoformat() if token.last_used_at else None,
-                'usage_count': token.usage_count,
-                'expires_at': token.expires_at.isoformat() if token.expires_at else None
+        # Preparar dados para kickoff (enviar direto, sem chamar /inputs)
+        query_text = game_request.ai_query or f"{game_request.title} jogo retro"
+        description = game_request.details or ""
+        
+        # A API espera: search_term e uma lista de nomes de jogos
+        # Por enquanto, vamos enviar o título como único nome e o query como search_term
+        kickoff_payload = {
+            "search_term": query_text,  # API espera "search_term", não "query"
+            "names": [game_request.title]  # Lista de nomes de jogos
+        }
+        
+        # Se houver descrição, podemos tentar adicionar (mas pode não ser necessário)
+        if description:
+            kickoff_payload["description"] = description
+        
+        # Debug: Print do payload que será enviado
+        print("=" * 80)
+        print("DEBUG - Enviando requisição para API")
+        print("=" * 80)
+        print(f"URL: {API_BASE_URL}/kickoff")
+        print(f"Payload JSON:")
+        print(json.dumps(kickoff_payload, indent=2, ensure_ascii=False))
+        print("-" * 80)
+        
+        # Enviar direto para /kickoff com autenticação
+        kickoff_url = f"{API_BASE_URL}/kickoff"
+        api_headers = get_api_headers()
+        
+        # Debug: Print dos headers de autenticação (sem mostrar o token completo por segurança)
+        if API_TOKEN:
+            token_preview = API_TOKEN[:10] + "..." if len(API_TOKEN) > 10 else API_TOKEN
+            print(f"Token configurado: {token_preview} (tamanho: {len(API_TOKEN)} caracteres)")
+        else:
+            print("AVISO: Nenhum token configurado! Adicione GAME_COLLECTOR_API_TOKEN no arquivo .env")
+        print(f"Headers de autenticação que serão enviados:")
+        for key, value in api_headers.items():
+            if 'token' in key.lower() or 'auth' in key.lower() or 'key' in key.lower():
+                # Mascarar tokens nos logs
+                if value and len(value) > 10:
+                    masked_value = value[:10] + "..." + value[-4:] if len(value) > 14 else value[:10] + "..."
+                    print(f"  {key}: {masked_value}")
+                else:
+                    print(f"  {key}: {value}")
+            else:
+                print(f"  {key}: {value}")
+        print("-" * 80)
+        
+        kickoff_response = requests.post(
+            kickoff_url,
+            json=kickoff_payload,
+            headers=api_headers,
+            timeout=30
+        )
+        
+        # Debug: Print da resposta
+        print(f"Status Code: {kickoff_response.status_code}")
+        print(f"Response Headers:")
+        for key, value in kickoff_response.headers.items():
+            print(f"  {key}: {value}")
+        print(f"Response Text (primeiros 1000 caracteres):")
+        print(kickoff_response.text[:1000])
+        print("=" * 80)
+        
+        # Verificar se houve erro antes de fazer raise_for_status
+        if not kickoff_response.ok:
+            print(f"ERRO: Status {kickoff_response.status_code}")
+            try:
+                error_json = kickoff_response.json()
+                print(f"Erro JSON:")
+                print(json.dumps(error_json, indent=2, ensure_ascii=False))
+            except:
+                print(f"Erro como texto: {kickoff_response.text}")
+        
+        kickoff_response.raise_for_status()
+        kickoff_data = kickoff_response.json()
+        
+        # Debug: Print dos dados retornados
+        print("Dados retornados pela API:")
+        print(json.dumps(kickoff_data, indent=2, ensure_ascii=False))
+        print("=" * 80)
+        
+        # 4. Salvar kickoff_id e atualizar status
+        game_request.kickoff_id = kickoff_data.get('kickoff_id') or kickoff_data.get('id')
+        game_request.status = 'approved'
+        game_request.execution_status = 'running'
+        game_request.save()
+        
+        # Se for requisição AJAX, retornar JSON
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': True,
+                'message': f'Requisição aprovada! Busca iniciada na API. ID: {game_request.kickoff_id}',
+                'kickoff_id': game_request.kickoff_id,
+                'status': 'running'
             })
         
-        return JsonResponse({
-            'tokens': tokens_data
-        })
+        messages.success(
+            request,
+            f'Requisição aprovada! Busca iniciada na API. ID: {game_request.kickoff_id}'
+        )
         
+    except requests.exceptions.HTTPError as e:
+        # Debug detalhado para erros HTTP
+        print("=" * 80)
+        print("ERRO HTTP ao comunicar com a API")
+        print("=" * 80)
+        print(f"Status Code: {e.response.status_code if hasattr(e, 'response') else 'N/A'}")
+        if hasattr(e, 'response'):
+            print(f"Response Headers:")
+            for key, value in e.response.headers.items():
+                print(f"  {key}: {value}")
+            print(f"Response Text:")
+            print(e.response.text)
+            try:
+                error_json = e.response.json()
+                print(f"Erro JSON:")
+                print(json.dumps(error_json, indent=2, ensure_ascii=False))
+            except:
+                pass
+        print("=" * 80)
+        
+        error_msg = f'Erro HTTP {e.response.status_code if hasattr(e, "response") else "desconhecido"} ao comunicar com a API: {str(e)}'
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'error': error_msg,
+                'status_code': e.response.status_code if hasattr(e, 'response') else None,
+                'response_text': e.response.text[:500] if hasattr(e, 'response') else str(e)
+            }, status=500)
+        messages.error(request, error_msg)
+    except requests.exceptions.Timeout:
+        print("=" * 80)
+        print("ERRO: Timeout ao comunicar com a API")
+        print("=" * 80)
+        error_msg = 'Timeout ao comunicar com a API. Tente novamente.'
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'error': error_msg
+            }, status=500)
+        messages.error(request, error_msg)
+    except requests.exceptions.RequestException as e:
+        print("=" * 80)
+        print("ERRO ao comunicar com a API")
+        print("=" * 80)
+        print(f"Tipo de exceção: {type(e).__name__}")
+        print(f"Mensagem: {str(e)}")
+        if hasattr(e, 'response'):
+            print(f"Status Code: {e.response.status_code}")
+            print(f"Response Text: {e.response.text[:500]}")
+        print("=" * 80)
+        error_msg = f'Erro ao comunicar com a API: {str(e)}'
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'error': error_msg
+            }, status=500)
+        messages.error(request, error_msg)
     except Exception as e:
+        import traceback
+        error_msg = f'Erro inesperado: {str(e)}'
+        # Log do erro completo para debug
+        print(f"Erro ao aprovar requisição: {traceback.format_exc()}")
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'error': error_msg
+            }, status=500)
+        messages.error(request, error_msg)
+    
+    # Se chegou aqui e não retornou JSON, redirecionar
+    if request.headers.get('X-Requested-With') != 'XMLHttpRequest':
+        return redirect('admin_game_request_detail', pk=pk)
+    else:
+        # Fallback para AJAX - retornar erro genérico
         return JsonResponse({
-            'error': 'Erro interno do servidor'
+            'error': 'Erro ao processar requisição'
         }, status=500)
 
 
-@csrf_exempt
+@user_passes_test(staff_required, login_url='home')
 @require_http_methods(["POST"])
-def setup_initial_data(request):
+def admin_reject_request(request, pk):
     """
-    Endpoint para configurar dados iniciais do sistema
-    Executa o comando setup_data para criar categorias, planos e consoles
-    
-    Body JSON (opcional):
-    {
-        "categories_only": true/false,
-        "plans_only": true/false,
-        "force": true/false
-    }
-    
-    Response:
-    {
-        "success": true/false,
-        "message": "Mensagem de resultado",
-        "output": "Saída do comando"
-    }
+    Rejeita uma requisição de jogo.
     """
+    game_request = get_object_or_404(GameRequest, pk=pk)
+    
+    if game_request.status == 'rejected':
+        messages.warning(request, 'Esta requisição já foi rejeitada.')
+        return redirect('admin_game_request_detail', pk=pk)
+    
+    game_request.status = 'rejected'
+    game_request.save()
+    
+    messages.success(request, 'Requisição rejeitada com sucesso.')
+    return redirect('admin_game_request_detail', pk=pk)
+
+
+@user_passes_test(staff_required, login_url='home')
+@require_http_methods(["GET"])
+def admin_check_api_status(request, pk):
+    """
+    View AJAX para verificar o status da execução na API externa.
+    """
+    game_request = get_object_or_404(GameRequest, pk=pk)
+    
+    if not game_request.kickoff_id:
+        return JsonResponse({
+            'error': 'Nenhum kickoff_id encontrado para esta requisição.'
+        }, status=400)
+    
     try:
-        # Capturar parâmetros do request
-        data = json.loads(request.body) if request.body else {}
-        categories_only = data.get('categories_only', False)
-        plans_only = data.get('plans_only', False)
-        force = data.get('force', False)
+        status_url = f"{API_BASE_URL}/status/{game_request.kickoff_id}"
         
-        # Capturar saída do comando
-        output_buffer = io.StringIO()
+        # Debug: Print da URL de status
+        print("=" * 80)
+        print("DEBUG - Verificando status da API")
+        print("=" * 80)
+        print(f"URL: {status_url}")
+        print(f"Kickoff ID: {game_request.kickoff_id}")
+        print("-" * 80)
         
-        # Preparar argumentos do comando
-        command_args = []
-        if categories_only:
-            command_args.append('--categories-only')
-        if plans_only:
-            command_args.append('--plans-only')
-        if force:
-            command_args.append('--force')
+        # Obter headers de autenticação
+        api_headers = get_api_headers()
         
-        # Executar comando
-        with redirect_stdout(output_buffer):
-            call_command('setup_data', *command_args, verbosity=2)
+        status_response = requests.get(status_url, headers=api_headers, timeout=10)
         
-        output = output_buffer.getvalue()
+        # Debug: Print da resposta de status
+        print(f"Status Code: {status_response.status_code}")
+        print(f"Response Headers:")
+        for key, value in status_response.headers.items():
+            print(f"  {key}: {value}")
+        print(f"Response Text (primeiros 1000 caracteres):")
+        print(status_response.text[:1000])
         
+        if not status_response.ok:
+            print(f"ERRO: Status {status_response.status_code}")
+            try:
+                error_json = status_response.json()
+                print(f"Erro JSON:")
+                print(json.dumps(error_json, indent=2, ensure_ascii=False))
+            except:
+                print(f"Erro como texto: {status_response.text}")
+        
+        status_response.raise_for_status()
+        status_data = status_response.json()
+        
+        # Debug: Print dos dados de status
+        print("Dados de status recebidos:")
+        print(json.dumps(status_data, indent=2, ensure_ascii=False))
+        print("=" * 80)
+        
+        # Atualizar status da execução
+        execution_status = status_data.get('status', 'unknown')
+        game_request.execution_status = execution_status
+        
+        # Se concluído, salvar os dados retornados e buscar jogos no retrogames.cc
+        if execution_status == 'completed' or execution_status == 'success':
+            if 'data' in status_data:
+                game_request.ai_response_data = status_data.get('data')
+            elif 'result' in status_data:
+                game_request.ai_response_data = status_data.get('result')
+            else:
+                game_request.ai_response_data = status_data
+            
+            # Se a IA retornou nomes de jogos, buscar no retrogames.cc
+            retrogames_results = []
+            if game_request.ai_response_data:
+                # Tentar extrair nomes de jogos da resposta da IA
+                game_names = []
+                
+                # Se a resposta contém uma lista de nomes
+                if isinstance(game_request.ai_response_data, dict):
+                    # Tentar diferentes campos possíveis
+                    if 'names' in game_request.ai_response_data:
+                        game_names = game_request.ai_response_data['names']
+                    elif 'games' in game_request.ai_response_data:
+                        if isinstance(game_request.ai_response_data['games'], list):
+                            game_names = [g.get('name', g) if isinstance(g, dict) else g for g in game_request.ai_response_data['games']]
+                    elif 'results' in game_request.ai_response_data:
+                        if isinstance(game_request.ai_response_data['results'], list):
+                            game_names = [r.get('name', r) if isinstance(r, dict) else r for r in game_request.ai_response_data['results']]
+                elif isinstance(game_request.ai_response_data, list):
+                    # Se for uma lista direta
+                    game_names = [item.get('name', item) if isinstance(item, dict) else item for item in game_request.ai_response_data]
+                
+                # Se não encontrou nomes na estrutura, usar o título da requisição
+                if not game_names:
+                    game_names = [game_request.title]
+                
+                # Buscar jogos no retrogames.cc
+                try:
+                    print(f"Buscando jogos no retrogames.cc para: {game_names}")
+                    retrogames_results = search_multiple_games(game_names, max_results_per_game=5)
+                    
+                    # Adicionar resultados ao ai_response_data
+                    if isinstance(game_request.ai_response_data, dict):
+                        game_request.ai_response_data['retrogames_results'] = retrogames_results
+                    else:
+                        # Se não for dict, converter
+                        game_request.ai_response_data = {
+                            'ai_data': game_request.ai_response_data,
+                            'retrogames_results': retrogames_results
+                        }
+                    print(f"Encontrados {len(retrogames_results)} jogos no retrogames.cc")
+                except Exception as e:
+                    print(f"Erro ao buscar jogos no retrogames.cc: {str(e)}")
+                    import traceback
+                    traceback.print_exc()
+        
+        game_request.save()
+        
+        response_data = {
+            'status': execution_status,
+            'data': game_request.ai_response_data,
+            'kickoff_id': game_request.kickoff_id
+        }
+        
+        # Incluir resultados do retrogames.cc se disponíveis
+        if game_request.ai_response_data and isinstance(game_request.ai_response_data, dict):
+            if 'retrogames_results' in game_request.ai_response_data:
+                response_data['retrogames_results'] = game_request.ai_response_data['retrogames_results']
+        
+        return JsonResponse(response_data)
+        
+    except requests.exceptions.HTTPError as e:
+        print("=" * 80)
+        print("ERRO HTTP ao verificar status")
+        print("=" * 80)
+        if hasattr(e, 'response'):
+            print(f"Status Code: {e.response.status_code}")
+            print(f"Response Headers:")
+            for key, value in e.response.headers.items():
+                print(f"  {key}: {value}")
+            print(f"Response Text:")
+            print(e.response.text)
+            try:
+                error_json = e.response.json()
+                print(f"Erro JSON:")
+                print(json.dumps(error_json, indent=2, ensure_ascii=False))
+            except:
+                pass
+        print("=" * 80)
         return JsonResponse({
-            'success': True,
-            'message': 'Dados iniciais configurados com sucesso',
-            'output': output
-        })
-        
-    except CommandError as e:
+            'error': f'Erro HTTP {e.response.status_code if hasattr(e, "response") else "desconhecido"} ao verificar status: {e.response.text[:200] if hasattr(e, "response") else str(e)}',
+            'status_code': e.response.status_code if hasattr(e, 'response') else None
+        }, status=500)
+    except requests.exceptions.RequestException as e:
+        print("=" * 80)
+        print("ERRO ao verificar status")
+        print("=" * 80)
+        print(f"Tipo de exceção: {type(e).__name__}")
+        print(f"Mensagem: {str(e)}")
+        if hasattr(e, 'response'):
+            print(f"Status Code: {e.response.status_code}")
+            print(f"Response Text: {e.response.text[:500]}")
+        print("=" * 80)
         return JsonResponse({
-            'success': False,
-            'message': f'Erro no comando: {str(e)}',
-            'output': ''
-        }, status=400)
-        
-    except json.JSONDecodeError:
+            'error': f'Erro ao verificar status: {str(e)}'
+        }, status=500)
+    except Exception as e:
+        import traceback
+        print("=" * 80)
+        print("ERRO INESPERADO ao verificar status")
+        print("=" * 80)
+        print(f"Tipo: {type(e).__name__}")
+        print(f"Mensagem: {str(e)}")
+        print(f"Traceback:")
+        print(traceback.format_exc())
+        print("=" * 80)
         return JsonResponse({
-            'success': False,
-            'message': 'JSON inválido no corpo da requisição',
-            'output': ''
-        }, status=400)
+            'error': f'Erro inesperado: {str(e)}'
+        }, status=500)
+
+
+@user_passes_test(staff_required, login_url='home')
+@require_http_methods(["GET", "POST"])
+def admin_search_retrogames(request, pk):
+    """
+    View para buscar jogos no retrogames.cc manualmente ou via AJAX.
+    """
+    import traceback
+    game_request = get_object_or_404(GameRequest, pk=pk)
+    
+    if request.method == 'POST':
+        # Busca manual via AJAX
+        query = request.POST.get('query') or request.GET.get('query') or game_request.ai_query or game_request.title
+        
+        try:
+            results = search_games_on_retrogames(query, max_results=5)
+            
+            # Salvar resultados no game_request
+            if not game_request.ai_response_data:
+                game_request.ai_response_data = {}
+            if not isinstance(game_request.ai_response_data, dict):
+                game_request.ai_response_data = {'ai_data': game_request.ai_response_data}
+            
+            game_request.ai_response_data['retrogames_results'] = results
+            game_request.save()
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'results': results,
+                    'count': len(results)
+                })
+            
+            messages.success(request, f'Encontrados {len(results)} jogos no retrogames.cc')
+            return redirect('admin_game_request_detail', pk=pk)
+            
+        except Exception as e:
+            error_msg = f'Erro ao buscar jogos: {str(e)}'
+            print(f"Erro ao buscar jogos: {traceback.format_exc()}")
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'error': error_msg
+                }, status=500)
+            
+            messages.error(request, error_msg)
+            return redirect('admin_game_request_detail', pk=pk)
+    
+    # GET - apenas redirecionar para detalhes
+    return redirect('admin_game_request_detail', pk=pk)
+
+
+@user_passes_test(staff_required, login_url='home')
+@require_http_methods(["POST"])
+def admin_create_game_from_request(request, pk):
+    """
+    Cria um jogo no catálogo a partir dos dados coletados pela API.
+    """
+    game_request = get_object_or_404(GameRequest, pk=pk)
+    
+    if not game_request.ai_response_data:
+        messages.error(request, 'Nenhum dado da API disponível para criar o jogo.')
+        return redirect('admin_game_request_detail', pk=pk)
+    
+    try:
+        # Obter dados do jogo
+        game_kwargs = game_request.to_game_kwargs()
+        
+        # Criar o jogo
+        game = Game.objects.create(**game_kwargs)
+        
+        messages.success(
+            request,
+            f'Jogo "{game.title}" criado com sucesso no catálogo!'
+        )
+        
+        return redirect('admin_game_requests_list')
         
     except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'message': f'Erro interno: {str(e)}',
-            'output': ''
-        }, status=500)
+        messages.error(request, f'Erro ao criar jogo: {str(e)}')
+        return redirect('admin_game_request_detail', pk=pk)

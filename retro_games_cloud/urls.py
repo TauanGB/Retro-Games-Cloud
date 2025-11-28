@@ -18,9 +18,22 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from games import views as games_views
 
 urlpatterns = [
+    # Rotas administrativas personalizadas (devem vir antes do admin padrão)
+    path('admin/game-requests/', games_views.admin_game_requests_list, name='admin_game_requests_list'),
+    path('admin/game-requests/<int:pk>/', games_views.admin_game_request_detail, name='admin_game_request_detail'),
+    path('admin/game-requests/<int:pk>/approve/', games_views.admin_approve_request, name='admin_approve_request'),
+    path('admin/game-requests/<int:pk>/reject/', games_views.admin_reject_request, name='admin_reject_request'),
+    path('admin/game-requests/<int:pk>/check-status/', games_views.admin_check_api_status, name='admin_check_api_status'),
+    path('admin/game-requests/<int:pk>/search-retrogames/', games_views.admin_search_retrogames, name='admin_search_retrogames'),
+    path('admin/game-requests/<int:pk>/create-game/', games_views.admin_create_game_from_request, name='admin_create_game_from_request'),
+    
+    # Django Admin padrão
     path('admin/', admin.site.urls),
+    
+    # URLs do app games
     path('', include('games.urls')),
 ]
 

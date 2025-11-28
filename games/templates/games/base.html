@@ -3,7 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Retro Games Cloud{% endblock %}</title>
+    <meta name="description" content="PWA educacional para TDE - Catálogo de jogos retro com emulador via retrogames.cc">
+    <meta name="theme-color" content="#1a1a2e">
+    
+    <title>{% block title %}Jogos Retro - TDE{% endblock %}</title>
+    
+    {% load static %}
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{% static 'manifest.json' %}">
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -17,7 +24,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- Custom CSS -->
-    {% load static %}
     <link rel="stylesheet" href="{% static 'css/modern-retro.css' %}">
     {% block extra_css %}{% endblock %}
 </head>
@@ -27,7 +33,7 @@
         <div class="container">
             <a class="navbar-brand" href="{% url 'home' %}">
                 <i class="fas fa-gamepad me-2"></i>
-                Retro Games Cloud
+                Jogos Retro - TDE
             </a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -41,24 +47,29 @@
                             <i class="fas fa-home me-1"></i>Início
                         </a>
                     </li>
-                    {% if user.is_authenticated %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'library' %}">
-                            <i class="fas fa-book me-1"></i>Biblioteca
+                        <a class="nav-link" href="{% url 'catalog' %}">
+                            <i class="fas fa-th me-1"></i>Catálogo
                         </a>
                     </li>
-                    {% endif %}
                 </ul>
                 
                 <ul class="navbar-nav">
                     {% if user.is_authenticated %}
+                    {% if user.is_staff %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'admin_game_requests_list' %}">
+                            <i class="fas fa-user-shield me-1"></i>Administração
+                        </a>
+                    </li>
+                    {% endif %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-user me-1"></i>{{ user.username }}
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{% url 'library' %}">
-                                <i class="fas fa-book me-2"></i>Minha Biblioteca
+                            <li><a class="dropdown-item" href="{% url 'my_game_requests' %}">
+                                <i class="fas fa-list-alt me-2"></i>Meus Pedidos
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{% url 'logout' %}">
@@ -70,11 +81,6 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'login' %}">
                             <i class="fas fa-sign-in-alt me-1"></i>Entrar
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'register' %}">
-                            <i class="fas fa-user-plus me-1"></i>Registrar
                         </a>
                     </li>
                     {% endif %}
@@ -107,9 +113,12 @@
             <div class="row">
                 <div class="col-md-6">
                     <h5 class="text-gradient mb-3">
-                        <i class="fas fa-gamepad me-2"></i>Retro Games Cloud
+                        <i class="fas fa-gamepad me-2"></i>Jogos Retro - TDE
                     </h5>
-                    <p class="text-muted">Sua plataforma de jogos retrô clássicos.</p>
+                    <p class="text-muted">PWA educacional para Trabalho de Desenvolvimento de Engenharia.</p>
+                    <p class="text-muted small">
+                        Emulador fornecido por <a href="https://www.retrogames.cc" target="_blank" rel="noopener">retrogames.cc</a>
+                    </p>
                 </div>
                 <div class="col-md-6 text-md-end">
                     <p class="text-muted mb-0">
@@ -123,6 +132,21 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('{% static "service-worker.js" %}')
+                    .then(function(registration) {
+                        console.log('ServiceWorker registrado com sucesso:', registration.scope);
+                    })
+                    .catch(function(error) {
+                        console.log('Falha ao registrar ServiceWorker:', error);
+                    });
+            });
+        }
+    </script>
     
     <!-- Custom JS -->
     {% block extra_js %}{% endblock %}

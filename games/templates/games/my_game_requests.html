@@ -1,0 +1,236 @@
+{% extends 'games/base.html' %}
+{% load static %}
+
+{% block title %}Meus Pedidos de Jogo - Jogos Retro TDE{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="modern-breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'home' %}">Início</a></li>
+        <li class="breadcrumb-item active">Meus Pedidos</li>
+    </ol>
+</nav>
+
+<!-- Header -->
+<div class="text-center mb-5">
+    <h1 class="retro-title text-gradient">
+        <i class="fas fa-list-alt me-3"></i>
+        Meus Pedidos de Jogo
+    </h1>
+    <p class="retro-subtitle">
+        Acompanhe o status dos seus pedidos de inclusão de jogos
+    </p>
+</div>
+
+<!-- Estatísticas -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="modern-card text-center">
+            <i class="fas fa-paper-plane fa-2x text-gradient mb-2"></i>
+            <h3 class="retro-heading">{{ total_requests }}</h3>
+            <p class="retro-text mb-0">Total de Pedidos</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="modern-card text-center">
+            <i class="fas fa-clock fa-2x text-warning mb-2"></i>
+            <h3 class="retro-heading">{{ pending_count }}</h3>
+            <p class="retro-text mb-0">Pendentes</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="modern-card text-center">
+            <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+            <h3 class="retro-heading">{{ approved_count }}</h3>
+            <p class="retro-text mb-0">Aprovados</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="modern-card text-center">
+            <i class="fas fa-times-circle fa-2x text-danger mb-2"></i>
+            <h3 class="retro-heading">{{ rejected_count }}</h3>
+            <p class="retro-text mb-0">Rejeitados</p>
+        </div>
+    </div>
+</div>
+
+<!-- Ação rápida -->
+<div class="text-end mb-4">
+    <a href="{% url 'request_game' %}" class="modern-btn modern-btn-primary">
+        <i class="fas fa-plus me-2"></i>Novo Pedido
+    </a>
+</div>
+
+<!-- Lista de pedidos -->
+{% if game_requests %}
+<div class="modern-card">
+    <h2 class="retro-heading mb-4">
+        <i class="fas fa-history me-2"></i>Histórico de Pedidos
+    </h2>
+    
+    <div class="table-responsive">
+        <table class="table table-dark table-hover">
+            <thead>
+                <tr>
+                    <th>Título</th>
+                    <th>Console</th>
+                    <th>Status</th>
+                    <th>Data de Criação</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for request in game_requests %}
+                <tr>
+                    <td>
+                        <strong>{{ request.title }}</strong>
+                        {% if request.notes %}
+                        <br><small class="text-muted">{{ request.notes|truncatewords:10 }}</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="modern-badge modern-badge-secondary">{{ request.console }}</span>
+                    </td>
+                    <td>
+                        {% if request.status == 'pending' %}
+                        <span class="modern-badge modern-badge-warning">
+                            <i class="fas fa-clock me-1"></i>Pendente
+                        </span>
+                        {% elif request.status == 'approved' %}
+                        <span class="modern-badge modern-badge-success">
+                            <i class="fas fa-check-circle me-1"></i>Aprovado
+                        </span>
+                        {% elif request.status == 'rejected' %}
+                        <span class="modern-badge modern-badge-danger">
+                            <i class="fas fa-times-circle me-1"></i>Rejeitado
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <small>{{ request.created_at|date:"d/m/Y H:i" }}</small>
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-sm modern-btn modern-btn-secondary" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#requestModal{{ request.id }}">
+                            <i class="fas fa-eye"></i> Detalhes
+                        </button>
+                    </td>
+                </tr>
+                
+                <!-- Modal de detalhes -->
+                <div class="modal fade" id="requestModal{{ request.id }}" tabindex="-1" 
+                     aria-labelledby="requestModalLabel{{ request.id }}" aria-hidden="true">
+                    <div class="modal-dialog modal-lg modal-dialog-centered">
+                        <div class="modal-content modern-card">
+                            <div class="modal-header">
+                                <h5 class="modal-title retro-heading" id="requestModalLabel{{ request.id }}">
+                                    <i class="fas fa-info-circle me-2"></i>Detalhes do Pedido
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" 
+                                        data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <strong><i class="fas fa-heading me-2"></i>Título:</strong>
+                                        <p class="retro-text">{{ request.title }}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong><i class="fas fa-gamepad me-2"></i>Console:</strong>
+                                        <p class="retro-text">{{ request.console }}</p>
+                                    </div>
+                                </div>
+                                
+                                {% if request.rom_url_suggestion %}
+                                <div class="mb-3">
+                                    <strong><i class="fas fa-link me-2"></i>URL da ROM/Sugestão:</strong>
+                                    <p class="retro-text">
+                                        <a href="{{ request.rom_url_suggestion }}" target="_blank" rel="noopener">
+                                            {{ request.rom_url_suggestion|truncatechars:60 }}
+                                            <i class="fas fa-external-link-alt ms-1"></i>
+                                        </a>
+                                    </p>
+                                </div>
+                                {% endif %}
+                                
+                                {% if request.notes %}
+                                <div class="mb-3">
+                                    <strong><i class="fas fa-sticky-note me-2"></i>Observações:</strong>
+                                    <p class="retro-text">{{ request.notes|linebreaks }}</p>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="mb-3">
+                                    <strong><i class="fas fa-info-circle me-2"></i>Status:</strong>
+                                    <p class="retro-text">
+                                        {% if request.status == 'pending' %}
+                                        <span class="modern-badge modern-badge-warning">
+                                            <i class="fas fa-clock me-1"></i>Pendente
+                                        </span>
+                                        {% elif request.status == 'approved' %}
+                                        <span class="modern-badge modern-badge-success">
+                                            <i class="fas fa-check-circle me-1"></i>Aprovado
+                                        </span>
+                                        {% elif request.status == 'rejected' %}
+                                        <span class="modern-badge modern-badge-danger">
+                                            <i class="fas fa-times-circle me-1"></i>Rejeitado
+                                        </span>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                                
+                                {% if request.admin_note %}
+                                <div class="mb-3">
+                                    <strong><i class="fas fa-user-shield me-2"></i>Nota do Administrador:</strong>
+                                    <div class="alert alert-info mb-0">
+                                        {{ request.admin_note|linebreaks }}
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                <hr>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <small class="text-muted">
+                                            <i class="fas fa-calendar-plus me-1"></i>
+                                            Criado em: {{ request.created_at|date:"d/m/Y H:i" }}
+                                        </small>
+                                    </div>
+                                    <div class="col-md-6 text-end">
+                                        <small class="text-muted">
+                                            <i class="fas fa-calendar-edit me-1"></i>
+                                            Atualizado em: {{ request.updated_at|date:"d/m/Y H:i" }}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="modern-btn modern-btn-secondary" 
+                                        data-bs-dismiss="modal">Fechar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="modern-card text-center">
+    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+    <h3 class="retro-heading">Nenhum pedido encontrado</h3>
+    <p class="retro-text">Você ainda não enviou nenhum pedido de jogo.</p>
+    <a href="{% url 'request_game' %}" class="modern-btn modern-btn-primary mt-3">
+        <i class="fas fa-plus me-2"></i>Fazer Primeiro Pedido
+    </a>
+</div>
+{% endif %}
+{% endblock %}
+
+
+
+
+

@@ -24,3 +24,8 @@ echo "💡 Para ver logs em tempo real, execute:"
 echo "   docker-compose logs -f web"
 echo ""
 
+
+
+
+
+

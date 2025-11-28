@@ -1,146 +1,127 @@
 {% extends 'games/base.html' %}
 {% load static %}
 
-{% block title %}{{ game.title }} - Retro Games Cloud{% endblock %}
+{% block title %}{{ game.title }} - Jogos Retro TDE{% endblock %}
 
 {% block content %}
 <!-- Breadcrumb -->
 <nav aria-label="breadcrumb" class="modern-breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="{% url 'home' %}">Início</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'catalog' %}">Catálogo</a></li>
         <li class="breadcrumb-item active">{{ game.title }}</li>
     </ol>
 </nav>
 
 <div class="row">
-    <!-- Imagem do Jogo -->
-    <div class="col-lg-4 mb-4">
-        <div class="modern-card">
-            <div class="game-image-modern" style="background-image: url('{{ game.cover_image }}'); height: 400px; border-radius: 12px;">
-                <div class="position-absolute top-0 end-0 p-3">
-                    <span class="modern-badge modern-badge-success fs-5">
-                        <i class="fas fa-dollar-sign me-1"></i>R$ {{ game.price }}
-                    </span>
-                </div>
-            </div>
-        </div>
-    </div>
-    
     <!-- Informações do Jogo -->
-    <div class="col-lg-8">
+    <div class="col-lg-3 col-md-4 mb-4">
         <div class="modern-card">
             <h1 class="retro-title mb-3">{{ game.title }}</h1>
             
-            <div class="mb-3">
-                <span class="game-console-modern fs-6">
-                    <i class="fas fa-tv me-1"></i>{{ game.console }}
-                </span>
-            </div>
-            
-            <!-- Categorias -->
-            {% if game.categories.all %}
-            <div class="mb-3">
-                <h6 class="retro-heading mb-2">
-                    <i class="fas fa-tags me-1"></i>Categorias
-                </h6>
-                <div class="d-flex flex-wrap gap-2">
-                    {% for category in game.categories.all %}
-                    <span class="modern-badge" style="background-color: {{ category.color }}; color: white;">
-                        <i class="{{ category.icon }} me-1"></i>{{ category.name }}
-                    </span>
-                    {% endfor %}
-                </div>
+            {% if game.description %}
+            <div class="mb-4">
+                <h3 class="retro-heading">Descrição</h3>
+                <p class="retro-text">{{ game.description|linebreaks }}</p>
             </div>
             {% endif %}
             
-            <div class="mb-4">
-                <h3 class="retro-heading">Descrição</h3>
-                <p class="retro-text">{{ game.description }}</p>
-            </div>
-            
-            <!-- Ações -->
-            <div class="d-flex gap-3 flex-wrap">
-                {% if user.is_authenticated %}
-                    {% if user_has_access %}
-                        <div class="modern-alert modern-alert-success">
-                            <i class="fas fa-check-circle me-2"></i>
-                            Você já possui este jogo!
-                        </div>
-                        <a href="{% url 'library' %}" class="modern-btn modern-btn-primary">
-                            <i class="fas fa-book me-1"></i>Ir para Biblioteca
-                        </a>
-                    {% else %}
-                        <a href="{% url 'checkout_game' game.id %}" class="modern-btn modern-btn-primary">
-                            <i class="fas fa-shopping-cart me-1"></i>Comprar Jogo
-                        </a>
-                    {% endif %}
-                {% else %}
-                    <div class="modern-alert modern-alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        Faça login para comprar este jogo
-                    </div>
-                    <a href="{% url 'login' %}" class="modern-btn modern-btn-primary">
-                        <i class="fas fa-sign-in-alt me-1"></i>Fazer Login
-                    </a>
-                {% endif %}
-                
-                <a href="{% url 'home' %}" class="modern-btn modern-btn-secondary">
-                    <i class="fas fa-arrow-left me-1"></i>Voltar
+            <div class="d-grid gap-2">
+                <a href="{% url 'catalog' %}" class="modern-btn modern-btn-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>Voltar ao Catálogo
                 </a>
             </div>
         </div>
     </div>
+    
+    <!-- Emulador -->
+    <div class="col-lg-9 col-md-8">
+        <div class="modern-card">
+            <h2 class="retro-heading mb-4">
+                <i class="fas fa-gamepad me-2"></i>Jogar
+            </h2>
+            
+            <!-- Container do iframe -->
+            <div class="game-iframe-container" style="position: relative; width: 100%; max-width: 100%; margin: 0 auto;">
+                {% if game.rom_url %}
+                <div style="position: relative; width: 100%; padding-bottom: 75%; background: #000; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);">
+                    <iframe src="{{ game.rom_url }}"
+                            width="800"
+                            height="600"
+                            frameborder="no"
+                            allowfullscreen="true"
+                            webkitallowfullscreen="true"
+                            mozallowfullscreen="true"
+                            scrolling="no"
+                            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; display: block;">
+                    </iframe>
+                </div>
+                {% else %}
+                <!-- Mensagem quando não há URL configurada -->
+                <div style="display: flex; align-items: center; justify-content: center; background: #1a1a2e; color: #fff; flex-direction: column; padding: 3rem; border-radius: 12px; min-height: 500px;">
+                    <i class="fas fa-exclamation-circle fa-3x mb-3 text-warning"></i>
+                    <h3 class="retro-heading mb-3">Emulador Não Configurado</h3>
+                    <p class="retro-text text-center">
+                        Este jogo ainda não possui uma URL da ROM configurada.
+                        <br>
+                        Por favor, configure a URL da ROM no painel administrativo.
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+            
+        </div>
+    </div>
 </div>
 
-<!-- Planos que contêm este jogo -->
-{% if plans_with_game %}
+<!-- Jogos Relacionados -->
+{% if related_games %}
 <div class="row mt-4">
     <div class="col-12">
         <div class="modern-card">
             <h3 class="retro-heading mb-4">
-                <i class="fas fa-crown me-2"></i>Planos que incluem este jogo
+                <i class="fas fa-th me-2"></i>Jogos Relacionados
             </h3>
             
             <div class="row g-4">
-                {% for plan in plans_with_game %}
-                <div class="col-lg-4 col-md-6">
-                    <div class="modern-card h-100 text-center">
-                        <div class="mb-3">
-                            <i class="fas fa-crown fa-2x text-gradient"></i>
-                        </div>
-                        <h4 class="retro-heading">{{ plan.name }}</h4>
-                        <p class="retro-text mb-3">{{ plan.description|truncatewords:15 }}</p>
-                        
-                        <div class="mb-3">
-                            <span class="modern-badge modern-badge-primary fs-5">
-                                <i class="fas fa-dollar-sign me-1"></i>R$ {{ plan.price }}/mês
-                            </span>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <span class="modern-badge modern-badge-success">
-                                <i class="fas fa-gamepad me-1"></i>{{ plan.games.count }} jogos
-                            </span>
+                {% for related_game in related_games %}
+                <div class="col-lg-3 col-md-4 col-sm-6">
+                    <div class="game-card-modern h-100" style="display: flex; flex-direction: column;">
+                        <!-- Ícone/Imagem do Jogo -->
+                        <div class="game-image-modern" 
+                             style="background-image: url('{{ related_game.cover_image|default:"/static/games/images/default-cover.jpg" }}'); 
+                                    background-size: cover; 
+                                    background-position: center; 
+                                    height: 180px; 
+                                    border-radius: 12px 12px 0 0;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    background-color: #1a1a2e;">
+                            {% if not related_game.cover_image %}
+                            <i class="fas fa-gamepad fa-3x" style="color: rgba(255,255,255,0.2);"></i>
+                            {% endif %}
                         </div>
                         
-                        <div class="d-grid gap-2">
-                            {% if plan.id in user_active_subscriptions %}
-                                <div class="modern-alert modern-alert-success">
-                                    <i class="fas fa-check-circle me-2"></i>
-                                    Você já possui este plano!
-                                </div>
-                                <a href="{% url 'library' %}" class="modern-btn modern-btn-primary">
-                                    <i class="fas fa-book me-1"></i>Ir para Biblioteca
-                                </a>
+                        <!-- Conteúdo do Card -->
+                        <div class="game-title-modern" style="padding: 1.25rem; flex-grow: 1; display: flex; flex-direction: column;">
+                            <h5 class="game-title-modern mb-2" style="font-size: 1rem; font-weight: 600; color: #fff; min-height: 2.5rem;">
+                                {{ related_game.title }}
+                            </h5>
+                            
+                            {% if related_game.description %}
+                            <p class="retro-text small mb-3" style="font-size: 0.8rem; color: #aaa; flex-grow: 1; line-height: 1.4;">
+                                {{ related_game.description|truncatewords:15 }}
+                            </p>
                             {% else %}
-                                <a href="{% url 'checkout_plan' plan.id %}" class="modern-btn modern-btn-primary">
-                                    <i class="fas fa-crown me-1"></i>Assinar Plano
-                                </a>
+                            <div class="mb-3" style="flex-grow: 1;"></div>
                             {% endif %}
                             
-                            <a href="{% url 'plan_detail' plan.id %}" class="modern-btn modern-btn-secondary">
-                                <i class="fas fa-info-circle me-1"></i>Ver Detalhes
-                            </a>
+                            <div class="d-flex justify-content-end mt-auto">
+                                <a href="{% url 'game_detail' related_game.slug %}" class="modern-btn modern-btn-primary btn-sm">
+                                    <i class="fas fa-play me-1"></i>Jogar
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -150,107 +131,54 @@
     </div>
 </div>
 {% endif %}
+{% endblock %}
 
-<!-- Informações Adicionais -->
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="modern-card">
-            <h3 class="retro-heading mb-3">
-                <i class="fas fa-info-circle me-2"></i>Informações do Jogo
-            </h3>
-            <div class="row">
-                <div class="col-md-3">
-                    <div class="text-center">
-                        <i class="fas fa-tv fa-2x text-gradient mb-2"></i>
-                        <h5 class="retro-heading">Console</h5>
-                        <p class="retro-text">{{ game.console }}</p>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="text-center">
-                        <i class="fas fa-dollar-sign fa-2x text-gradient mb-2"></i>
-                        <h5 class="retro-heading">Preço</h5>
-                        <p class="retro-text">R$ {{ game.price }}</p>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="text-center">
-                        <i class="fas fa-calendar fa-2x text-gradient mb-2"></i>
-                        <h5 class="retro-heading">Adicionado</h5>
-                        <p class="retro-text">{{ game.created_at|date:"d/m/Y" }}</p>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="text-center">
-                        <i class="fas fa-gamepad fa-2x text-gradient mb-2"></i>
-                        <h5 class="retro-heading">Status</h5>
-                        <p class="retro-text">
-                            {% if game.is_active %}
-                                <span class="modern-badge modern-badge-success">Ativo</span>
-                            {% else %}
-                                <span class="modern-badge modern-badge-warning">Inativo</span>
-                            {% endif %}
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+{% block extra_css %}
+<style>
+    /* Container do iframe responsivo */
+    .game-iframe-container {
+        width: 100%;
+    }
+    
+    /* Ajustes para telas grandes */
+    @media (min-width: 1200px) {
+        .game-iframe-container > div {
+            padding-bottom: 70% !important; /* Proporção 16:9 aproximada */
+        }
+    }
+    
+    /* Ajustes para tablets */
+    @media (min-width: 768px) and (max-width: 1199px) {
+        .game-iframe-container > div {
+            padding-bottom: 75% !important; /* Proporção 4:3 */
+        }
+    }
+    
+    /* Ajustes para mobile */
+    @media (max-width: 767px) {
+        .game-iframe-container > div {
+            padding-bottom: 80% !important; /* Proporção mais vertical para mobile */
+            border-radius: 8px !important;
+        }
+        
+        /* Ajustar layout em mobile */
+        .col-lg-3.col-md-4 {
+            margin-bottom: 1.5rem;
+        }
+    }
+    
+    /* Melhorar visualização do iframe */
+    .game-iframe-container iframe {
+        min-height: 400px;
+    }
+    
+    @media (min-width: 992px) {
+        .game-iframe-container iframe {
+            min-height: 500px;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block extra_js %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Efeito de hover na imagem do jogo
-    const gameImage = document.querySelector('.game-image-modern');
-    if (gameImage) {
-        gameImage.addEventListener('mouseenter', function() {
-            this.style.transform = 'scale(1.02)';
-        });
-        gameImage.addEventListener('mouseleave', function() {
-            this.style.transform = 'scale(1)';
-        });
-    }
-    
-    // Efeito de hover nos badges
-    const badges = document.querySelectorAll('.modern-badge');
-    badges.forEach(badge => {
-        badge.addEventListener('mouseenter', function() {
-            this.style.transform = 'scale(1.1)';
-        });
-        badge.addEventListener('mouseleave', function() {
-            this.style.transform = 'scale(1)';
-        });
-    });
-    
-    // Animação de entrada
-    const cards = document.querySelectorAll('.modern-card');
-    cards.forEach((card, index) => {
-        card.style.opacity = '0';
-        card.style.transform = 'translateY(30px)';
-        setTimeout(() => {
-            card.style.transition = 'all 0.6s ease';
-            card.style.opacity = '1';
-            card.style.transform = 'translateY(0)';
-        }, index * 200);
-    });
-    
-    // Efeito de digitação no título
-    const title = document.querySelector('.retro-title');
-    if (title) {
-        const text = title.textContent;
-        title.textContent = '';
-        let i = 0;
-        const typeWriter = () => {
-            if (i < text.length) {
-                title.textContent += text.charAt(i);
-                i++;
-                setTimeout(typeWriter, 100);
-            }
-        };
-        setTimeout(typeWriter, 500);
-    }
-});
-</script>
 {% endblock %}

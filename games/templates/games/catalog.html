@@ -1,0 +1,115 @@
+{% extends 'games/base.html' %}
+{% load static %}
+
+{% block title %}Catálogo de Jogos - Jogos Retro TDE{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="modern-breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'home' %}">Início</a></li>
+        <li class="breadcrumb-item active">Catálogo</li>
+    </ol>
+</nav>
+
+<!-- Header -->
+<div class="text-center mb-5">
+    <h1 class="retro-title text-gradient">
+        <i class="fas fa-th me-3"></i>
+        Catálogo de Jogos
+    </h1>
+    <p class="retro-subtitle">
+        Explore todos os jogos retro disponíveis
+    </p>
+</div>
+
+<!-- Jogos -->
+<section class="mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="retro-heading mb-0">
+            <i class="fas fa-gamepad me-2"></i>Jogos Disponíveis
+        </h2>
+        <div class="d-flex align-items-center gap-3">
+            <span class="modern-badge modern-badge-primary fs-6">
+                {{ games.count }} jogo{{ games.count|pluralize }}
+            </span>
+            {% if user.is_authenticated %}
+            <a href="{% url 'request_game' %}" class="modern-btn modern-btn-secondary btn-sm">
+                <i class="fas fa-plus me-1"></i>Sugerir Novo Jogo
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    
+    {% if games %}
+    <div class="row g-4">
+        {% for game in games %}
+        <div class="col-lg-3 col-md-4 col-sm-6">
+            <div class="game-card-modern h-100" style="display: flex; flex-direction: column;">
+                <!-- Ícone/Imagem do Jogo -->
+                <div class="game-image-modern" 
+                     style="background-image: url('{{ game.cover_image|default:"/static/games/images/default-cover.jpg" }}'); 
+                            background-size: cover; 
+                            background-position: center; 
+                            height: 200px; 
+                            border-radius: 12px 12px 0 0;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            background-color: #1a1a2e;">
+                    {% if not game.cover_image %}
+                    <i class="fas fa-gamepad fa-4x" style="color: rgba(255,255,255,0.2);"></i>
+                    {% endif %}
+                </div>
+                
+                <!-- Conteúdo do Card -->
+                <div class="game-title-modern" style="padding: 1.25rem; flex-grow: 1; display: flex; flex-direction: column;">
+                    <h5 class="game-title-modern mb-2" style="font-size: 1.1rem; font-weight: 600; color: #fff; min-height: 3rem;">
+                        {{ game.title }}
+                    </h5>
+                    
+                    {% if game.description %}
+                    <p class="retro-text small mb-3" style="font-size: 0.85rem; color: #aaa; flex-grow: 1; line-height: 1.4;">
+                        {{ game.description|truncatewords:20 }}
+                    </p>
+                    {% else %}
+                    <div class="mb-3" style="flex-grow: 1;"></div>
+                    {% endif %}
+                    
+                    <div class="d-flex justify-content-end mt-auto">
+                        <a href="{% url 'game_detail' game.slug %}" class="modern-btn modern-btn-primary btn-sm">
+                            <i class="fas fa-play me-1"></i>Jogar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="modern-card text-center">
+        <i class="fas fa-gamepad fa-3x text-muted mb-3"></i>
+        <h3 class="retro-heading">Nenhum jogo disponível</h3>
+        <p class="retro-text">Não há jogos ativos no momento.</p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Efeito de hover nos cards de jogos
+    const gameCards = document.querySelectorAll('.game-card-modern');
+    gameCards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-8px)';
+        });
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+});
+</script>
+{% endblock %}
+

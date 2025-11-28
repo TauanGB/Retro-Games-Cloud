@@ -1,1 +1,0 @@
-TODO Alterar logica principal, para evitar copy right, op sistema agora ira apenas proporcionar o sistema de cloud, e o uso do propio desktop como console, permitindo acessa-lo de longe

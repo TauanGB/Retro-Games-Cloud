@@ -1,81 +1,66 @@
 from django.contrib import admin
-from .models import Category, Game, Plan, Purchase, Subscription, Entitlement, PaymentSession, GameToken
-
-
-@admin.register(Category)
-class CategoryAdmin(admin.ModelAdmin):
-    list_display = ['name', 'color', 'icon', 'is_active', 'created_at']
-    list_filter = ['is_active', 'created_at']
-    search_fields = ['name', 'description']
-    ordering = ['name']
-    readonly_fields = ['created_at']
+from .models import Game, GameRequest
 
 
 @admin.register(Game)
 class GameAdmin(admin.ModelAdmin):
-    list_display = ['title', 'console', 'price', 'is_active', 'created_at']
-    list_filter = ['console', 'categories', 'is_active', 'created_at']
-    search_fields = ['title', 'description', 'console']
-    ordering = ['title']
-    readonly_fields = ['created_at', 'updated_at']
-    filter_horizontal = ['categories']
-
-
-@admin.register(Plan)
-class PlanAdmin(admin.ModelAdmin):
-    list_display = ['name', 'price', 'is_active', 'created_at']
+    """Admin para jogos retro do catálogo"""
+    list_display = ['title', 'slug', 'is_active', 'created_at']
     list_filter = ['is_active', 'created_at']
-    search_fields = ['name', 'description']
-    ordering = ['name']
-    readonly_fields = ['created_at', 'updated_at']
-    filter_horizontal = ['games']
+    search_fields = ['title', 'description', 'slug', 'cover_image']
+    ordering = ['title']
+    readonly_fields = ['slug', 'created_at', 'updated_at']
+    fieldsets = (
+        ('Informações Básicas', {
+            'fields': ('title', 'slug', 'description')
+        }),
+        ('Mídia', {
+            'fields': ('cover_image',),
+            'description': 'URL da imagem de capa do jogo. Será exibida nos cards de jogos.'
+        }),
+        ('Integração com Emulador', {
+            'fields': ('rom_url',),
+            'description': 'URL completa do jogo no retrogames.cc ou serviço similar. Ex: https://www.retrogames.cc/embed/[ID]. Esta URL será usada diretamente no atributo src do iframe do emulador.'
+        }),
+        ('Status', {
+            'fields': ('is_active',)
+        }),
+            ('Datas', {
+                'fields': ('created_at', 'updated_at'),
+                'classes': ('collapse',)
+            }),
+        )
 
 
-@admin.register(Purchase)
-class PurchaseAdmin(admin.ModelAdmin):
-    list_display = ['user', 'game', 'amount', 'status', 'purchase_date']
-    list_filter = ['status', 'purchase_date']
-    search_fields = ['user__username', 'game__title']
-    ordering = ['-purchase_date']
-    readonly_fields = ['purchase_date', 'idempotency_key']
-
-
-@admin.register(Subscription)
-class SubscriptionAdmin(admin.ModelAdmin):
-    list_display = ['user', 'plan', 'status', 'start_date', 'current_period_end']
-    list_filter = ['status', 'start_date']
-    search_fields = ['user__username', 'plan__name']
-    ordering = ['-start_date']
-    readonly_fields = ['start_date', 'idempotency_key']
-
-
-@admin.register(Entitlement)
-class EntitlementAdmin(admin.ModelAdmin):
-    list_display = ['user', 'game', 'is_perpetual', 'granted_date']
-    list_filter = ['is_perpetual', 'granted_date']
-    search_fields = ['user__username', 'game__title']
-    ordering = ['-granted_date']
-    readonly_fields = ['granted_date']
-
-
-@admin.register(PaymentSession)
-class PaymentSessionAdmin(admin.ModelAdmin):
-    list_display = ['user', 'game', 'plan', 'amount', 'status', 'created_at']
+@admin.register(GameRequest)
+class GameRequestAdmin(admin.ModelAdmin):
+    """Admin para pedidos de jogos enviados por usuários"""
+    list_display = ['title', 'user', 'status', 'created_at']
     list_filter = ['status', 'created_at']
-    search_fields = ['user__username', 'session_id']
+    search_fields = ['title', 'user__username', 'details']
+    readonly_fields = ['created_at', 'updated_at']
     ordering = ['-created_at']
-    readonly_fields = ['session_id', 'created_at']
-
-
-@admin.register(GameToken)
-class GameTokenAdmin(admin.ModelAdmin):
-    list_display = ['user', 'game', 'status', 'created_at', 'last_used_at', 'usage_count']
-    list_filter = ['status', 'created_at', 'last_used_at']
-    search_fields = ['user__username', 'game__title', 'token']
-    ordering = ['-created_at']
-    readonly_fields = ['token', 'token_hash', 'created_at', 'last_used_at', 'usage_count']
+    list_editable = ['status']
+    
+    fieldsets = (
+        ('Informações do Pedido', {
+            'fields': ('user', 'title')
+        }),
+        ('Detalhes Técnicos', {
+            'fields': ('rom_url_suggestion', 'details')
+        }),
+        ('Análise Administrativa', {
+            'fields': ('status', 'admin_note'),
+            'description': 'Altere o status do pedido e adicione uma nota explicativa.'
+        }),
+        ('Datas', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
     
     def get_readonly_fields(self, request, obj=None):
+        """Torna user readonly após a criação"""
         if obj:  # editing an existing object
-            return self.readonly_fields + ['user', 'game', 'entitlement']
+            return self.readonly_fields + ('user',)
         return self.readonly_fields

@@ -18,10 +18,10 @@
     --accent-orange: #ff6b35;
     --accent-pink: #ff0080;
     
-    /* Cores de texto */
+    /* Cores de texto - melhoradas para visibilidade */
     --text-primary: #ffffff;
-    --text-secondary: #b3b3b3;
-    --text-muted: #666666;
+    --text-secondary: #d0d0d0;
+    --text-muted: #888888;
     --text-accent: #00d4ff;
     
     /* Cores de borda */
@@ -121,6 +121,181 @@ body::after {
     font-size: 1rem;
     color: var(--text-secondary);
     line-height: 1.7;
+}
+
+/* Melhorias de visibilidade para textos */
+p, div, span, label, small {
+    color: var(--text-secondary);
+}
+
+strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.form-label, label {
+    color: var(--text-primary) !important;
+    font-weight: 500;
+}
+
+.form-text, .text-muted {
+    color: var(--text-muted) !important;
+}
+
+.text-danger {
+    color: #ff6b6b !important;
+}
+
+.text-success {
+    color: var(--accent-green) !important;
+}
+
+.text-info {
+    color: var(--accent-cyan) !important;
+}
+
+.text-warning {
+    color: var(--accent-orange) !important;
+}
+
+/* Melhorias para inputs e selects */
+input, textarea, select {
+    color: var(--text-primary) !important;
+}
+
+input::placeholder, textarea::placeholder {
+    color: var(--text-muted) !important;
+}
+
+/* Melhorias para tabelas */
+table {
+    color: var(--text-secondary);
+}
+
+table th {
+    color: var(--text-primary) !important;
+    font-weight: 600;
+}
+
+table td {
+    color: var(--text-secondary) !important;
+}
+
+/* Melhorias para alertas do Bootstrap */
+.alert {
+    color: var(--text-primary) !important;
+}
+
+.alert-info {
+    background-color: rgba(0, 212, 255, 0.1) !important;
+    border-color: var(--accent-cyan) !important;
+    color: var(--accent-cyan) !important;
+}
+
+.alert-success {
+    background-color: rgba(0, 255, 136, 0.1) !important;
+    border-color: var(--accent-green) !important;
+    color: var(--accent-green) !important;
+}
+
+.alert-warning {
+    background-color: rgba(255, 107, 53, 0.1) !important;
+    border-color: var(--accent-orange) !important;
+    color: var(--accent-orange) !important;
+}
+
+.alert-danger {
+    background-color: rgba(255, 107, 53, 0.1) !important;
+    border-color: #ff6b6b !important;
+    color: #ff6b6b !important;
+}
+
+/* Melhorias para breadcrumb */
+.breadcrumb-item {
+    color: var(--text-secondary) !important;
+}
+
+.breadcrumb-item.active {
+    color: var(--text-primary) !important;
+}
+
+/* Melhorias para badges do Bootstrap */
+.badge {
+    color: var(--primary-bg) !important;
+}
+
+/* Melhorias para código */
+code {
+    background-color: var(--surface-bg);
+    color: var(--accent-cyan);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Melhorias adicionais para visibilidade */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary) !important;
+}
+
+small {
+    color: var(--text-secondary) !important;
+}
+
+/* Melhorias para selects do Bootstrap */
+select.form-control,
+select.modern-input {
+    background-color: var(--surface-bg) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-primary) !important;
+}
+
+select.form-control option,
+select.modern-input option {
+    background-color: var(--card-bg) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Melhorias para checkboxes e radio buttons */
+.form-check-label {
+    color: var(--text-secondary) !important;
+}
+
+.form-check-input:checked {
+    background-color: var(--accent-cyan) !important;
+    border-color: var(--accent-cyan) !important;
+}
+
+/* Melhorias para links */
+a {
+    color: var(--accent-cyan) !important;
+}
+
+a:hover {
+    color: var(--accent-green) !important;
+}
+
+/* Melhorias para tabelas escuras do Bootstrap */
+.table-dark {
+    background-color: var(--card-bg) !important;
+    color: var(--text-secondary) !important;
+}
+
+.table-dark th,
+.table-dark td,
+.table-dark thead th {
+    border-color: var(--border-primary) !important;
+    color: var(--text-secondary) !important;
+}
+
+.table-dark thead th {
+    color: var(--text-primary) !important;
+    font-weight: 600;
+}
+
+.table-hover tbody tr:hover {
+    background-color: var(--surface-bg) !important;
+    color: var(--text-primary) !important;
 }
 
 /* Navegação moderna */
@@ -382,8 +557,9 @@ body::after {
 }
 
 .modern-input::placeholder {
-    color: var(--text-muted);
+    color: var(--text-muted) !important;
     font-family: 'Inter', sans-serif;
+    opacity: 0.7;
 }
 
 .modern-label {

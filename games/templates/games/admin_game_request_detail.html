@@ -1,0 +1,991 @@
+{% extends 'games/base.html' %}
+{% load static %}
+
+{% block title %}Analisar Requisição #{{ game_request.id }} - Jogos Retro TDE{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="modern-breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'home' %}">Início</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'admin_game_requests_list' %}">Administração - Requisições</a></li>
+        <li class="breadcrumb-item active">Requisição #{{ game_request.id }}</li>
+    </ol>
+</nav>
+
+<!-- Header -->
+<div class="text-center mb-5">
+    <h1 class="retro-title text-gradient">
+        <i class="fas fa-edit me-3"></i>
+        Analisar Requisição #{{ game_request.id }}
+    </h1>
+    <p class="retro-subtitle">
+        Gerencie esta requisição e integre com a API para coletar dados do jogo
+    </p>
+</div>
+
+<!-- Mensagens -->
+{% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+{% endif %}
+
+<!-- Dados da Requisição (somente leitura) -->
+<div class="modern-card mb-4">
+    <h2 class="retro-heading mb-4">
+        <i class="fas fa-info-circle me-2"></i>Dados da Requisição
+    </h2>
+    
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <strong><i class="fas fa-user me-2"></i>Usuário Solicitante:</strong>
+            <p class="retro-text">{{ game_request.user.username }} ({{ game_request.user.email|default:"Sem e-mail" }})</p>
+        </div>
+        <div class="col-md-6">
+            <strong><i class="fas fa-heading me-2"></i>Título do Jogo:</strong>
+            <p class="retro-text">{{ game_request.title }}</p>
+        </div>
+    </div>
+    
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <strong><i class="fas fa-info-circle me-2"></i>Status:</strong>
+            <p class="retro-text">
+                {% if game_request.status == 'pending' %}
+                <span class="modern-badge modern-badge-warning">
+                    <i class="fas fa-clock me-1"></i>Pendente
+                </span>
+                {% elif game_request.status == 'approved' %}
+                <span class="modern-badge modern-badge-success">
+                    <i class="fas fa-check-circle me-1"></i>Aprovado
+                </span>
+                {% elif game_request.status == 'rejected' %}
+                <span class="modern-badge modern-badge-danger">
+                    <i class="fas fa-times-circle me-1"></i>Rejeitado
+                </span>
+                {% endif %}
+            </p>
+        </div>
+        <div class="col-md-6">
+            <strong><i class="fas fa-cog me-2"></i>Status da Execução:</strong>
+            <p class="retro-text">
+                {% if game_request.execution_status == 'running' %}
+                <span class="modern-badge modern-badge-info">
+                    <i class="fas fa-spinner fa-spin me-1"></i>Em Execução
+                </span>
+                {% elif game_request.execution_status == 'completed' or game_request.execution_status == 'success' %}
+                <span class="modern-badge modern-badge-success">
+                    <i class="fas fa-check me-1"></i>Concluído
+                </span>
+                {% elif game_request.execution_status == 'failed' %}
+                <span class="modern-badge modern-badge-danger">
+                    <i class="fas fa-exclamation-triangle me-1"></i>Falhou
+                </span>
+                {% else %}
+                <span class="modern-badge modern-badge-secondary">
+                    <i class="fas fa-minus me-1"></i>Não iniciado
+                </span>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+    
+    {% if game_request.details %}
+    <div class="mb-3">
+        <strong><i class="fas fa-sticky-note me-2"></i>Detalhes do Jogo:</strong>
+        <div class="modern-card bg-dark">
+            <p class="retro-text mb-0">{{ game_request.details|linebreaks }}</p>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if game_request.admin_note %}
+    <div class="mb-3">
+        <strong><i class="fas fa-user-shield me-2"></i>Nota do Administrador:</strong>
+        <div class="alert alert-info mb-0">
+            {{ game_request.admin_note|linebreaks }}
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if game_request.kickoff_id %}
+    <div class="mb-3">
+        <strong><i class="fas fa-key me-2"></i>ID da Execução (Kickoff):</strong>
+        <p class="retro-text"><code>{{ game_request.kickoff_id }}</code></p>
+    </div>
+    {% endif %}
+    
+    <hr>
+    <div class="row">
+        <div class="col-md-6">
+            <small class="text-muted">
+                <i class="fas fa-calendar-plus me-1"></i>
+                Criado em: {{ game_request.created_at|date:"d/m/Y H:i" }}
+            </small>
+        </div>
+        <div class="col-md-6 text-end">
+            <small class="text-muted">
+                <i class="fas fa-calendar-edit me-1"></i>
+                Atualizado em: {{ game_request.updated_at|date:"d/m/Y H:i" }}
+            </small>
+        </div>
+    </div>
+</div>
+
+<!-- Ações Rápidas -->
+{% if game_request.status == 'pending' %}
+<div class="modern-card mb-4">
+    <h2 class="retro-heading mb-4">
+        <i class="fas fa-bolt me-2"></i>Ações Rápidas
+    </h2>
+    
+    <div class="d-flex gap-3 flex-wrap">
+        <button type="button" 
+                class="modern-btn modern-btn-success" 
+                id="approve-btn"
+                onclick="approveAndStartApi()">
+            <i class="fas fa-check-circle me-2"></i>Aprovar e Buscar na API
+        </button>
+        
+        <form method="post" action="{% url 'admin_reject_request' game_request.pk %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="modern-btn modern-btn-danger" onclick="return confirm('Tem certeza que deseja rejeitar esta requisição?');">
+                <i class="fas fa-times-circle me-2"></i>Rejeitar
+            </button>
+        </form>
+    </div>
+    
+    <!-- Loading durante aprovação -->
+    <div id="approval-loading" class="mt-3" style="display: none;">
+        <div class="alert alert-info">
+            <i class="fas fa-spinner fa-spin me-2"></i>
+            <strong>Enviando para API...</strong> Aguarde enquanto iniciamos a busca.
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Formulário Simplificado - Envio Direto para IA -->
+{% if game_request.status == 'pending' %}
+<div class="modern-card mb-4">
+    <h2 class="retro-heading mb-4">
+        <i class="fas fa-robot me-2"></i>Consulta para IA
+    </h2>
+    
+    <div class="alert alert-info mb-4">
+        <i class="fas fa-info-circle me-2"></i>
+        <strong>Como funciona:</strong> Digite um texto simples descrevendo o jogo e clique em "Enviar para IA". A IA retornará de 1 a 5 nomes de jogos correspondentes.
+    </div>
+    
+    <form id="ai-query-form" method="post">
+        {% csrf_token %}
+        
+        <div class="mb-4">
+            <label for="{{ form.ai_query.id_for_label }}" class="modern-label">
+                <i class="fas fa-search me-2"></i>Texto para Busca na IA
+            </label>
+            {{ form.ai_query }}
+            {% if form.ai_query.help_text %}
+            <div class="form-text text-muted mt-2">{{ form.ai_query.help_text }}</div>
+            {% endif %}
+            {% if form.ai_query.errors %}
+            <div class="text-danger mt-2">
+                {% for error in form.ai_query.errors %}
+                <small><i class="fas fa-exclamation-circle me-1"></i>{{ error }}</small>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="d-flex justify-content-between align-items-center">
+            <a href="{% url 'admin_game_requests_list' %}" class="modern-btn modern-btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Voltar para Lista
+            </a>
+            <button type="submit" class="modern-btn modern-btn-primary" id="send-ai-btn">
+                <i class="fas fa-paper-plane me-2"></i>Enviar para IA
+            </button>
+        </div>
+    </form>
+    
+    <!-- Loading durante envio -->
+    <div id="query-loading" class="mt-3" style="display: none;">
+        <div class="alert alert-info">
+            <i class="fas fa-spinner fa-spin me-2"></i>
+            <strong>Enviando para IA...</strong> Aguarde enquanto processamos sua consulta.
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Status da API e Dados Retornados -->
+{% if game_request.status == 'approved' %}
+<div class="modern-card mb-4" id="api-status-card">
+    <h2 class="retro-heading mb-4">
+        <i class="fas fa-cloud me-2"></i>Status da API Externa
+    </h2>
+    
+    <div id="api-status-container">
+        <div id="api-status-message" class="alert alert-info">
+            <i class="fas fa-spinner fa-spin me-2"></i>
+            <span id="api-status-text">Aguardando resposta da API...</span>
+        </div>
+        
+        <div id="api-progress" class="mt-3" style="display: none;">
+            <div class="progress" style="height: 8px; background-color: var(--surface-bg); border-radius: 10px;">
+                <div id="api-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                     role="progressbar" 
+                     style="width: 0%; background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));">
+                </div>
+            </div>
+            <small class="text-muted mt-2 d-block">Processando busca na API...</small>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Dados Retornados pela API -->
+<div id="api-results-container" style="display: {% if game_request.ai_response_data %}block{% else %}none{% endif %};">
+<div class="modern-card mb-4">
+    <h2 class="retro-heading mb-4">
+        <i class="fas fa-database me-2"></i>Dados Retornados pela IA
+    </h2>
+    
+    <div id="api-results-content">
+    {% if game_request.ai_response_data %}
+    
+    <div class="row mb-3">
+        {% if game_request.ai_response_data.title %}
+        <div class="col-md-6 mb-3">
+            <strong><i class="fas fa-heading me-2"></i>Título:</strong>
+            <p class="retro-text">{{ game_request.ai_response_data.title }}</p>
+        </div>
+        {% endif %}
+        
+        {% if game_request.ai_response_data.cover_image or game_request.ai_response_data.image_url %}
+        <div class="col-md-6 mb-3">
+            <strong><i class="fas fa-image me-2"></i>Imagem de Capa:</strong>
+            <p class="retro-text">
+                <img src="{{ game_request.ai_response_data.cover_image|default:game_request.ai_response_data.image_url }}" 
+                     alt="Capa do jogo" 
+                     class="img-thumbnail" 
+                     style="max-width: 200px; max-height: 200px;">
+            </p>
+        </div>
+        {% endif %}
+    </div>
+    
+    {% if game_request.ai_response_data.description %}
+    <div class="mb-3">
+        <strong><i class="fas fa-align-left me-2"></i>Descrição:</strong>
+        <div class="modern-card bg-dark">
+            <p class="retro-text mb-0">{{ game_request.ai_response_data.description|linebreaks }}</p>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if game_request.ai_response_data.rom_url or game_request.ai_response_data.iframe_url %}
+    <div class="mb-3">
+        <strong><i class="fas fa-link me-2"></i>URL do Jogo:</strong>
+        <p class="retro-text">
+            <a href="{{ game_request.ai_response_data.rom_url|default:game_request.ai_response_data.iframe_url }}" 
+               target="_blank" 
+               rel="noopener" 
+               class="text-info">
+                {{ game_request.ai_response_data.rom_url|default:game_request.ai_response_data.iframe_url }}
+                <i class="fas fa-external-link-alt ms-1"></i>
+            </a>
+        </p>
+    </div>
+    {% endif %}
+    
+    <div class="mb-3">
+        <strong><i class="fas fa-code me-2"></i>Dados Completos (JSON):</strong>
+        <div class="input-group">
+            {% if ai_response_json %}
+            <textarea id="aiResponseJson" class="form-control modern-input bg-dark text-light font-monospace" rows="10" readonly>{{ ai_response_json }}</textarea>
+            {% else %}
+            <textarea id="aiResponseJson" class="form-control modern-input bg-dark text-light font-monospace" rows="10" readonly>{{ game_request.ai_response_data|safe }}</textarea>
+            {% endif %}
+            <button type="button" class="modern-btn modern-btn-secondary" onclick="copyToClipboard('aiResponseJson', 'JSON copiado!')">
+                <i class="fas fa-copy me-2"></i>Copiar
+            </button>
+        </div>
+    </div>
+    
+    {% if game_request.execution_status == 'completed' or game_request.execution_status == 'success' %}
+    <div class="alert alert-success">
+        <i class="fas fa-check-circle me-2"></i>
+        <strong>Dados coletados com sucesso!</strong> Você pode agora criar o jogo no catálogo.
+    </div>
+    
+    <form method="post" action="{% url 'admin_create_game_from_request' game_request.pk %}" class="mt-3">
+        {% csrf_token %}
+        <button type="submit" class="modern-btn modern-btn-success" onclick="return confirm('Tem certeza que deseja criar o jogo no catálogo com estes dados?');">
+            <i class="fas fa-plus-circle me-2"></i>Criar Jogo no Catálogo
+        </button>
+    </form>
+    {% endif %}
+    {% endif %}
+    </div>
+</div>
+</div>
+
+<!-- Resultados do Retrogames.cc -->
+{% if game_request.ai_response_data and game_request.ai_response_data.retrogames_results %}
+<div class="modern-card mb-4" id="retrogames-results-container">
+    <h2 class="retro-heading mb-4">
+        <i class="fas fa-gamepad me-2"></i>Jogos Encontrados no Retrogames.cc
+    </h2>
+    
+    <div class="row" id="retrogames-cards">
+        {% for game in game_request.ai_response_data.retrogames_results %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card modern-card h-100" style="border: 1px solid var(--accent-cyan);">
+                <div class="card-img-top-container" style="height: 200px; overflow: hidden; background: var(--surface-bg); display: flex; align-items: center; justify-content: center;">
+                    <img src="{{ game.image_url }}" 
+                         alt="{{ game.title }}" 
+                         class="card-img-top" 
+                         style="max-height: 100%; max-width: 100%; object-fit: contain;"
+                         onerror="this.src='https://via.placeholder.com/300x200?text=Imagem+não+disponível';">
+                </div>
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title retro-heading" style="font-size: 1rem; min-height: 3rem;">
+                        {{ game.title|truncatewords:10 }}
+                    </h5>
+                    <div class="mt-auto">
+                        <a href="{{ game.game_url }}" 
+                           target="_blank" 
+                           rel="noopener" 
+                           class="modern-btn modern-btn-primary btn-sm w-100 mb-2">
+                            <i class="fas fa-external-link-alt me-2"></i>Ver no Retrogames.cc
+                        </a>
+                        {% if game.embed_url %}
+                        <button type="button" 
+                                class="modern-btn modern-btn-secondary btn-sm w-100" 
+                                onclick="copyToClipboard('{{ game.embed_url }}', 'URL do embed copiada!')">
+                            <i class="fas fa-code me-2"></i>Copiar URL do Embed
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    {% if game_request.ai_response_data.retrogames_results|length == 0 %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle me-2"></i>
+        Nenhum jogo encontrado no retrogames.cc para esta busca.
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Botão para busca manual no Retrogames.cc -->
+{% if game_request.status == 'approved' %}
+<div class="modern-card mb-4">
+    <h2 class="retro-heading mb-4">
+        <i class="fas fa-search me-2"></i>Busca Manual no Retrogames.cc
+    </h2>
+    
+    <form id="retrogames-search-form" method="post" action="{% url 'admin_search_retrogames' game_request.pk %}">
+        {% csrf_token %}
+        <div class="row">
+            <div class="col-md-8 mb-3">
+                <input type="text" 
+                       name="query" 
+                       id="retrogames-query" 
+                       class="form-control modern-input" 
+                       placeholder="Digite o nome do jogo para buscar no retrogames.cc..."
+                       value="{{ game_request.ai_query|default:game_request.title }}">
+            </div>
+            <div class="col-md-4 mb-3">
+                <button type="submit" class="modern-btn modern-btn-primary w-100" id="retrogames-search-btn">
+                    <i class="fas fa-search me-2"></i>Buscar Jogos
+                </button>
+            </div>
+        </div>
+    </form>
+    
+    <div id="retrogames-search-loading" style="display: none;" class="mt-3">
+        <div class="alert alert-info">
+            <i class="fas fa-spinner fa-spin me-2"></i>
+            <strong>Buscando jogos...</strong> Aguarde enquanto pesquisamos no retrogames.cc.
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let pollingInterval = null;
+let progressInterval = null;
+let progressValue = 0;
+
+function copyToClipboard(elementId, successMessage) {
+    const element = document.getElementById(elementId);
+    element.select();
+    element.setSelectionRange(0, 99999);
+    
+    try {
+        document.execCommand('copy');
+        
+        const button = event.target.closest('button');
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check me-2"></i>Copiado!';
+        button.classList.add('modern-btn-success');
+        
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.classList.remove('modern-btn-success');
+        }, 2000);
+    } catch (err) {
+        console.error('Erro ao copiar:', err);
+        alert('Erro ao copiar. Por favor, selecione e copie manualmente.');
+    }
+}
+
+// Função para aprovar e iniciar a API via AJAX
+function approveAndStartApi() {
+    if (!confirm('Tem certeza que deseja aprovar esta requisição? Isso iniciará a busca na API externa.')) {
+        return;
+    }
+    
+    const approveBtn = document.getElementById('approve-btn');
+    const loadingDiv = document.getElementById('approval-loading');
+    
+    // Desabilitar botão e mostrar loading
+    approveBtn.disabled = true;
+    approveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Enviando...';
+    loadingDiv.style.display = 'block';
+    
+    // Fazer requisição AJAX
+    fetch('{% url "admin_approve_request" game_request.pk %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'csrfmiddlewaretoken=' + getCookie('csrftoken')
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.json();
+        } else {
+            return response.json().then(err => Promise.reject(err));
+        }
+    })
+    .then(data => {
+        if (data.error) {
+            alert('Erro: ' + data.error);
+            approveBtn.disabled = false;
+            approveBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>Aprovar e Buscar na API';
+            loadingDiv.style.display = 'none';
+        } else {
+            // Sucesso - recarregar página para mostrar status
+            loadingDiv.innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle me-2"></i><strong>Enviado com sucesso!</strong> Aguarde enquanto processamos...</div>';
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao aprovar requisição. Por favor, tente novamente.');
+        approveBtn.disabled = false;
+        approveBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>Aprovar e Buscar na API';
+        loadingDiv.style.display = 'none';
+    });
+}
+
+// Função para obter cookie CSRF
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Função para verificar status da API
+function checkApiStatus() {
+    const statusContainer = document.getElementById('api-status-message');
+    const statusText = document.getElementById('api-status-text');
+    const progressDiv = document.getElementById('api-progress');
+    const progressBar = document.getElementById('api-progress-bar');
+    
+    if (!statusContainer) return;
+    
+    fetch('{% url "admin_check_api_status" game_request.pk %}')
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                statusText.innerHTML = `<i class="fas fa-exclamation-triangle me-2"></i>${data.error}`;
+                statusContainer.className = 'alert alert-danger';
+                progressDiv.style.display = 'none';
+                stopPolling();
+            } else {
+                const status = data.status || 'unknown';
+                let statusIcon = 'fas fa-info-circle';
+                let statusClass = 'alert-info';
+                
+                if (status === 'completed' || status === 'success') {
+                    statusIcon = 'fas fa-check-circle';
+                    statusClass = 'alert-success';
+                    statusText.innerHTML = `<i class="${statusIcon} me-2"></i>Execução concluída com sucesso!`;
+                    progressDiv.style.display = 'none';
+                    progressBar.style.width = '100%';
+                    stopPolling();
+                    
+                    // Atualizar interface com os dados retornados
+                    updateApiResults(data.data);
+                    
+                    // Se houver resultados do retrogames.cc, atualizar cards
+                    if (data.data && data.data.retrogames_results && data.data.retrogames_results.length > 0) {
+                        updateRetrogamesCards(data.data.retrogames_results);
+                    }
+                    
+                } else if (status === 'running') {
+                    statusIcon = 'fas fa-spinner fa-spin';
+                    statusText.innerHTML = `<i class="${statusIcon} me-2"></i>Execução em andamento... Aguarde enquanto a IA busca os dados.`;
+                    statusContainer.className = `alert ${statusClass}`;
+                    progressDiv.style.display = 'block';
+                    
+                    // Animar barra de progresso
+                    animateProgress();
+                } else if (status === 'failed') {
+                    statusIcon = 'fas fa-exclamation-triangle';
+                    statusClass = 'alert-danger';
+                    statusText.innerHTML = `<i class="${statusIcon} me-2"></i>Execução falhou.`;
+                    progressDiv.style.display = 'none';
+                    stopPolling();
+                } else {
+                    statusText.innerHTML = `<i class="${statusIcon} me-2"></i>Status: ${status}`;
+                }
+                
+                statusContainer.className = `alert ${statusClass}`;
+            }
+        })
+        .catch(error => {
+            statusText.innerHTML = `<i class="fas fa-exclamation-triangle me-2"></i>Erro ao verificar status: ${error.message}`;
+            statusContainer.className = 'alert alert-danger';
+            progressDiv.style.display = 'none';
+        });
+}
+
+// Função para animar barra de progresso
+function animateProgress() {
+    if (progressInterval) {
+        clearInterval(progressInterval);
+    }
+    
+    progressValue = 0;
+    const progressBar = document.getElementById('api-progress-bar');
+    
+    progressInterval = setInterval(() => {
+        if (progressValue < 90) {
+            progressValue += Math.random() * 10;
+            if (progressValue > 90) progressValue = 90;
+            progressBar.style.width = progressValue + '%';
+        }
+    }, 500);
+}
+
+// Função para atualizar resultados da API
+function updateApiResults(data) {
+    if (!data) {
+        // Se não houver dados, recarregar página após um momento
+        setTimeout(() => {
+            window.location.reload();
+        }, 2000);
+        return;
+    }
+    
+    const resultsContainer = document.getElementById('api-results-container');
+    const resultsContent = document.getElementById('api-results-content');
+    
+    if (!resultsContainer || !resultsContent) {
+        // Se os elementos não existirem, recarregar página
+        setTimeout(() => {
+            window.location.reload();
+        }, 2000);
+        return;
+    }
+    
+    // Mostrar container de resultados
+    resultsContainer.style.display = 'block';
+    
+    // Criar HTML com os dados
+    let html = '';
+    
+    // Se os dados vierem como array (múltiplos jogos), pegar o primeiro
+    let gameData = data;
+    if (Array.isArray(data) && data.length > 0) {
+        gameData = data[0];
+    }
+    
+    // Se houver uma lista de nomes de jogos
+    if (gameData.names && Array.isArray(gameData.names)) {
+        html += `
+            <div class="alert alert-info mb-4">
+                <i class="fas fa-list me-2"></i>
+                <strong>Jogos encontrados:</strong> A IA retornou ${gameData.names.length} nome(s) de jogo(s).
+            </div>
+            <div class="mb-4">
+                <strong><i class="fas fa-gamepad me-2"></i>Nomes encontrados:</strong>
+                <ul class="list-unstyled mt-2">
+        `;
+        gameData.names.forEach((name, index) => {
+            html += `<li class="mb-2"><span class="modern-badge modern-badge-primary">${index + 1}. ${name}</span></li>`;
+        });
+        html += `
+                </ul>
+            </div>
+        `;
+    }
+    
+    if (gameData.title || gameData.name) {
+        html += `
+            <div class="row mb-3">
+                <div class="col-md-6 mb-3">
+                    <strong><i class="fas fa-heading me-2"></i>Título:</strong>
+                    <p class="retro-text">${gameData.title || gameData.name}</p>
+                </div>
+        `;
+        
+        if (gameData.cover_image || gameData.image_url) {
+            html += `
+                    <div class="col-md-6 mb-3">
+                        <strong><i class="fas fa-image me-2"></i>Imagem de Capa:</strong>
+                        <p class="retro-text">
+                            <img src="${gameData.cover_image || gameData.image_url}" 
+                                 alt="Capa do jogo" 
+                                 class="img-thumbnail" 
+                                 style="max-width: 200px; max-height: 200px;">
+                        </p>
+                    </div>
+                </div>
+            `;
+        } else {
+            html += '</div>';
+        }
+    }
+    
+    if (gameData.description) {
+        const description = typeof gameData.description === 'string' 
+            ? gameData.description.replace(/\n/g, '<br>') 
+            : JSON.stringify(gameData.description);
+        html += `
+            <div class="mb-3">
+                <strong><i class="fas fa-align-left me-2"></i>Descrição:</strong>
+                <div class="modern-card bg-dark">
+                    <p class="retro-text mb-0">${description}</p>
+                </div>
+            </div>
+        `;
+    }
+    
+    if (gameData.rom_url || gameData.iframe_url || gameData.url) {
+        const url = gameData.rom_url || gameData.iframe_url || gameData.url;
+        html += `
+            <div class="mb-3">
+                <strong><i class="fas fa-link me-2"></i>URL do Jogo:</strong>
+                <p class="retro-text">
+                    <a href="${url}" 
+                       target="_blank" 
+                       rel="noopener" 
+                       class="text-info">
+                        ${url}
+                        <i class="fas fa-external-link-alt ms-1"></i>
+                    </a>
+                </p>
+            </div>
+        `;
+    }
+    
+    // JSON completo
+    html += `
+        <div class="mb-3">
+            <strong><i class="fas fa-code me-2"></i>Dados Completos (JSON):</strong>
+            <div class="input-group">
+                <textarea id="aiResponseJson" class="form-control modern-input bg-dark text-light font-monospace" rows="10" readonly>${JSON.stringify(data, null, 2)}</textarea>
+                <button type="button" class="modern-btn modern-btn-secondary" onclick="copyToClipboard('aiResponseJson', 'JSON copiado!')">
+                    <i class="fas fa-copy me-2"></i>Copiar
+                </button>
+            </div>
+        </div>
+    `;
+    
+    // Botão para criar jogo (só se houver dados suficientes)
+    if (gameData.title || gameData.name || (gameData.names && gameData.names.length > 0)) {
+        html += `
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle me-2"></i>
+                <strong>Dados coletados com sucesso!</strong> Você pode agora criar o jogo no catálogo.
+            </div>
+            
+            <form method="post" action="{% url 'admin_create_game_from_request' game_request.pk %}" class="mt-3">
+                {% csrf_token %}
+                <button type="submit" class="modern-btn modern-btn-success" onclick="return confirm('Tem certeza que deseja criar o jogo no catálogo com estes dados?');">
+                    <i class="fas fa-plus-circle me-2"></i>Criar Jogo no Catálogo
+                </button>
+            </form>
+        `;
+    }
+    
+    resultsContent.innerHTML = html;
+    
+    // Scroll suave até os resultados
+    setTimeout(() => {
+        resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 300);
+}
+
+function startPolling() {
+    if (pollingInterval) {
+        clearInterval(pollingInterval);
+    }
+    
+    checkApiStatus();
+    pollingInterval = setInterval(checkApiStatus, 3000); // Verificar a cada 3 segundos
+}
+
+function stopPolling() {
+    if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+    }
+    if (progressInterval) {
+        clearInterval(progressInterval);
+        progressInterval = null;
+    }
+}
+
+// Interceptar submit do formulário de consulta para IA
+document.addEventListener('DOMContentLoaded', function() {
+    const aiQueryForm = document.getElementById('ai-query-form');
+    const sendAiBtn = document.getElementById('send-ai-btn');
+    const queryLoading = document.getElementById('query-loading');
+    
+    if (aiQueryForm && sendAiBtn) {
+        aiQueryForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Desabilitar botão e mostrar loading
+            sendAiBtn.disabled = true;
+            sendAiBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Enviando...';
+            queryLoading.style.display = 'block';
+            
+            // Obter dados do formulário
+            const formData = new FormData(aiQueryForm);
+            formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+            
+            // Enviar via AJAX
+            fetch('{% url "admin_game_request_detail" game_request.pk %}', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: formData
+            })
+            .then(response => {
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    return response.json().then(data => {
+                        if (!response.ok) {
+                            return Promise.reject(data);
+                        }
+                        return data;
+                    });
+                } else {
+                    // Se não for JSON, pode ser um redirect HTML - recarregar página
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                        return { success: true };
+                    }
+                    // Se for HTML, recarregar página
+                    window.location.reload();
+                    return { success: true };
+                }
+            })
+            .then(data => {
+                if (data && data.error) {
+                    alert('Erro: ' + data.error);
+                    sendAiBtn.disabled = false;
+                    sendAiBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Enviar para IA';
+                    queryLoading.style.display = 'none';
+                } else if (data && data.success) {
+                    // Sucesso - recarregar página para mostrar status
+                    queryLoading.innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle me-2"></i><strong>Enviado com sucesso!</strong> Aguarde enquanto processamos...</div>';
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    // Se não retornou dados, recarregar página
+                    window.location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                const errorMsg = error.error || error.message || 'Erro ao enviar para IA. Por favor, tente novamente.';
+                alert(errorMsg);
+                sendAiBtn.disabled = false;
+                sendAiBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Enviar para IA';
+                queryLoading.style.display = 'none';
+            });
+        });
+    }
+    
+    // Iniciar polling automaticamente se estiver em execução
+    {% if game_request.status == 'approved' %}
+    // Se já está aprovado, iniciar polling imediatamente
+    if ('{{ game_request.execution_status }}' === 'running') {
+        startPolling();
+    } else if ('{{ game_request.execution_status }}' !== 'completed' && '{{ game_request.execution_status }}' !== 'success') {
+        // Se não está completo, verificar status
+        checkApiStatus();
+        startPolling();
+    }
+    {% endif %}
+    
+    // Interceptar busca manual no retrogames.cc
+    const retrogamesSearchForm = document.getElementById('retrogames-search-form');
+    const retrogamesSearchBtn = document.getElementById('retrogames-search-btn');
+    const retrogamesSearchLoading = document.getElementById('retrogames-search-loading');
+    
+    if (retrogamesSearchForm && retrogamesSearchBtn) {
+        retrogamesSearchForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const query = document.getElementById('retrogames-query').value;
+            if (!query.trim()) {
+                alert('Por favor, digite um termo de busca.');
+                return;
+            }
+            
+            // Desabilitar botão e mostrar loading
+            retrogamesSearchBtn.disabled = true;
+            retrogamesSearchBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Buscando...';
+            retrogamesSearchLoading.style.display = 'block';
+            
+            // Enviar via AJAX
+            const formData = new FormData(retrogamesSearchForm);
+            formData.append('query', query);
+            
+            fetch('{% url "admin_search_retrogames" game_request.pk %}', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: formData
+            })
+            .then(response => {
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    return response.json().then(data => {
+                        if (!response.ok) {
+                            return Promise.reject(data);
+                        }
+                        return data;
+                    });
+                } else {
+                    window.location.reload();
+                    return { success: true };
+                }
+            })
+            .then(data => {
+                if (data && data.error) {
+                    alert('Erro: ' + data.error);
+                    retrogamesSearchBtn.disabled = false;
+                    retrogamesSearchBtn.innerHTML = '<i class="fas fa-search me-2"></i>Buscar Jogos';
+                    retrogamesSearchLoading.style.display = 'none';
+                } else if (data && data.success) {
+                    // Recarregar página para mostrar resultados
+                    window.location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                const errorMsg = error.error || error.message || 'Erro ao buscar jogos. Por favor, tente novamente.';
+                alert(errorMsg);
+                retrogamesSearchBtn.disabled = false;
+                retrogamesSearchBtn.innerHTML = '<i class="fas fa-search me-2"></i>Buscar Jogos';
+                retrogamesSearchLoading.style.display = 'none';
+            });
+        });
+    }
+    
+    // Função para atualizar cards do retrogames quando dados chegarem via AJAX
+    function updateRetrogamesCards(results) {
+        const container = document.getElementById('retrogames-results-container');
+        if (!container) {
+            // Criar container se não existir
+            const apiResultsContainer = document.getElementById('api-results-container');
+            if (apiResultsContainer) {
+                const newContainer = document.createElement('div');
+                newContainer.className = 'modern-card mb-4';
+                newContainer.id = 'retrogames-results-container';
+                newContainer.innerHTML = '<h2 class="retro-heading mb-4"><i class="fas fa-gamepad me-2"></i>Jogos Encontrados no Retrogames.cc</h2><div class="row" id="retrogames-cards"></div>';
+                apiResultsContainer.parentNode.insertBefore(newContainer, apiResultsContainer.nextSibling);
+            }
+        }
+        
+        const cardsContainer = document.getElementById('retrogames-cards');
+        if (cardsContainer && results && results.length > 0) {
+            cardsContainer.innerHTML = '';
+            results.forEach(game => {
+                const card = document.createElement('div');
+                card.className = 'col-md-6 col-lg-4 mb-4';
+                card.innerHTML = `
+                    <div class="card modern-card h-100" style="border: 1px solid var(--accent-cyan);">
+                        <div class="card-img-top-container" style="height: 200px; overflow: hidden; background: var(--surface-bg); display: flex; align-items: center; justify-content: center;">
+                            <img src="${game.image_url}" 
+                                 alt="${game.title}" 
+                                 class="card-img-top" 
+                                 style="max-height: 100%; max-width: 100%; object-fit: contain;"
+                                 onerror="this.src='https://via.placeholder.com/300x200?text=Imagem+não+disponível';">
+                        </div>
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title retro-heading" style="font-size: 1rem; min-height: 3rem;">
+                                ${game.title}
+                            </h5>
+                            <div class="mt-auto">
+                                <a href="${game.game_url}" 
+                                   target="_blank" 
+                                   rel="noopener" 
+                                   class="modern-btn modern-btn-primary btn-sm w-100 mb-2">
+                                    <i class="fas fa-external-link-alt me-2"></i>Ver no Retrogames.cc
+                                </a>
+                                ${game.embed_url ? `<button type="button" class="modern-btn modern-btn-secondary btn-sm w-100" onclick="copyToClipboard('${game.embed_url}', 'URL do embed copiada!')"><i class="fas fa-code me-2"></i>Copiar URL do Embed</button>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                cardsContainer.appendChild(card);
+            });
+            
+            // Mostrar container
+            const retrogamesContainer = document.getElementById('retrogames-results-container');
+            if (retrogamesContainer) {
+                retrogamesContainer.style.display = 'block';
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

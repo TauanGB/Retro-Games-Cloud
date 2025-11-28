@@ -1,0 +1,94 @@
+{% extends 'games/base.html' %}
+{% load static %}
+
+{% block title %}Solicitar Jogo - Jogos Retro TDE{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="modern-breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'home' %}">Início</a></li>
+        <li class="breadcrumb-item active">Solicitar Jogo</li>
+    </ol>
+</nav>
+
+<!-- Header -->
+<div class="text-center mb-5">
+    <h1 class="retro-title text-gradient">
+        <i class="fas fa-paper-plane me-3"></i>
+        Solicitar Novo Jogo
+    </h1>
+    <p class="retro-subtitle">
+        Envie uma solicitação para que o administrador adicione um novo jogo ao catálogo
+    </p>
+</div>
+
+<!-- Alert informativo -->
+<div class="modern-card mb-4">
+    <div class="alert alert-info mb-0">
+        <i class="fas fa-info-circle me-2"></i>
+        <strong>Como funciona:</strong> Seu pedido será enviado ao administrador para análise. 
+        O administrador avaliará sua solicitação e, se aprovada, adicionará o jogo ao catálogo manualmente. 
+        Você pode acompanhar o status dos seus pedidos <a href="{% url 'my_game_requests' %}">aqui</a>.
+    </div>
+</div>
+
+<!-- Formulário -->
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="modern-card">
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    <label for="{{ form.title.id_for_label }}" class="modern-label">
+                        <i class="fas fa-heading me-2"></i>{{ form.title.label }}
+                        {% if form.title.field.required %}<span class="text-danger">*</span>{% endif %}
+                    </label>
+                    {{ form.title }}
+                    {% if form.title.help_text %}
+                    <small class="form-text text-muted">{{ form.title.help_text }}</small>
+                    {% endif %}
+                    {% if form.title.errors %}
+                    <div class="text-danger small mt-1">
+                        {% for error in form.title.errors %}
+                        <div><i class="fas fa-exclamation-circle me-1"></i>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="mb-4">
+                    <label for="{{ form.details.id_for_label }}" class="modern-label">
+                        <i class="fas fa-sticky-note me-2"></i>{{ form.details.label }}
+                        {% if form.details.field.required %}<span class="text-danger">*</span>{% endif %}
+                    </label>
+                    {{ form.details }}
+                    {% if form.details.help_text %}
+                    <small class="form-text text-muted">{{ form.details.help_text }}</small>
+                    {% endif %}
+                    {% if form.details.errors %}
+                    <div class="text-danger small mt-1">
+                        {% for error in form.details.errors %}
+                        <div><i class="fas fa-exclamation-circle me-1"></i>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <a href="{% url 'catalog' %}" class="modern-btn modern-btn-secondary me-md-2">
+                        <i class="fas fa-times me-2"></i>Cancelar
+                    </a>
+                    <button type="submit" class="modern-btn modern-btn-primary">
+                        <i class="fas fa-paper-plane me-2"></i>Enviar Solicitação
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+
+
