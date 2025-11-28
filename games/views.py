@@ -13,6 +13,9 @@ from decouple import config
 from .models import Game, GameRequest
 from .forms import GameRequestForm, AdminGameRequestForm
 from .utils import search_games_on_retrogames, search_multiple_games
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def home(request):
@@ -380,37 +383,68 @@ def admin_approve_request(request, pk):
         
         # Preparar dados para kickoff (enviar direto, sem chamar /inputs)
         # Garantir que query_text sempre tenha um valor válido e não vazio
-        query_text = game_request.ai_query.strip() if game_request.ai_query and game_request.ai_query.strip() else f"{game_request.title.strip()} jogo retro"
+        title_stripped = game_request.title.strip() if game_request.title else ""
         
-        # Validação final: garantir que query_text não está vazio
-        if not query_text or not query_text.strip():
-            query_text = f"{game_request.title.strip()} jogo retro"
+        # Construir query_text com fallbacks
+        if game_request.ai_query and game_request.ai_query.strip():
+            query_text = game_request.ai_query.strip()
+        elif title_stripped:
+            query_text = f"{title_stripped} jogo retro"
+        else:
+            query_text = "jogo retro"  # Fallback final
         
-        description = game_request.details.strip() if game_request.details else ""
+        # Garantir que query_text é uma string válida e não vazia
+        query_text = str(query_text).strip()
+        if not query_text:
+            query_text = "jogo retro"
         
-        # A API espera apenas o search_term
-        kickoff_payload = {
-            "search_term": query_text,  # API espera "search_term", não "query"
-        }
-        
-        # Validar que search_term não está vazio antes de enviar
-        if not kickoff_payload["search_term"] or not kickoff_payload["search_term"].strip():
+        # A API espera apenas o search_term - garantir que seja uma string não vazia
+        search_term_value = str(query_text).strip()
+        if not search_term_value:
             error_msg = 'Não foi possível gerar um termo de busca válido. Por favor, verifique o título e a consulta para IA.'
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({'error': error_msg}, status=400)
             messages.error(request, error_msg)
             return redirect('admin_game_request_detail', pk=pk)
         
-        # Se houver descrição, podemos tentar adicionar (mas pode não ser necessário)
-        if description:
-            kickoff_payload["description"] = description
+        # A API espera a estrutura com "inputs" contendo "search_term"
+        kickoff_payload = {
+            "inputs": {
+                "search_term": search_term_value
+            },
+            "taskWebhookUrl": "",
+            "stepWebhookUrl": "",
+            "crewWebhookUrl": "",
+            "trainingFilename": "",
+            "generateArtifact": False
+        }
+        
+        # Validação final: garantir que search_term existe e não está vazio dentro de inputs
+        if "inputs" not in kickoff_payload or "search_term" not in kickoff_payload["inputs"]:
+            error_msg = 'Erro: estrutura do payload inválida!'
+            print(f"ERRO CRÍTICO: {error_msg}")
+            print(f"Payload: {kickoff_payload}")
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'error': error_msg}, status=400)
+            messages.error(request, error_msg)
+            return redirect('admin_game_request_detail', pk=pk)
+        
+        if not kickoff_payload["inputs"]["search_term"] or not str(kickoff_payload["inputs"]["search_term"]).strip():
+            error_msg = 'Erro: search_term não pode estar vazio!'
+            print(f"ERRO CRÍTICO: {error_msg}")
+            print(f"Payload: {kickoff_payload}")
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'error': error_msg}, status=400)
+            messages.error(request, error_msg)
+            return redirect('admin_game_request_detail', pk=pk)
         
         # Debug: Print do payload que será enviado
         print("=" * 80)
         print("DEBUG - Enviando requisição para API")
         print("=" * 80)
         print(f"URL: {API_BASE_URL}/kickoff")
-        print(f"Payload JSON:")
+        print(f"search_term (tipo: {type(kickoff_payload['inputs']['search_term'])}, valor: '{kickoff_payload['inputs']['search_term']}', tamanho: {len(str(kickoff_payload['inputs']['search_term']))})")
+        print(f"Payload JSON completo:")
         print(json.dumps(kickoff_payload, indent=2, ensure_ascii=False))
         print("-" * 80)
         
@@ -435,6 +469,12 @@ def admin_approve_request(request, pk):
                     print(f"  {key}: {value}")
             else:
                 print(f"  {key}: {value}")
+        print("-" * 80)
+        
+        # Serializar o JSON manualmente para debug
+        json_body = json.dumps(kickoff_payload, ensure_ascii=False)
+        print(f"Body JSON que será enviado (tamanho: {len(json_body)} bytes):")
+        print(json_body)
         print("-" * 80)
         
         kickoff_response = requests.post(
@@ -640,73 +680,105 @@ def admin_check_api_status(request, pk):
         print("=" * 80)
         
         # Atualizar status da execução
-        execution_status = status_data.get('status', 'unknown')
-        game_request.execution_status = execution_status
+        # A API retorna 'state' (SUCCESS, RUNNING, etc.) em vez de 'status'
+        execution_state = status_data.get('state', status_data.get('status', 'unknown'))
+        
+        # Normalizar o estado para salvar no banco
+        if execution_state == 'SUCCESS':
+            game_request.execution_status = 'completed'
+        elif execution_state == 'RUNNING' or execution_state == 'PENDING':
+            game_request.execution_status = 'running'
+        elif execution_state == 'ERROR' or execution_state == 'FAILED':
+            game_request.execution_status = 'failed'
+        else:
+            game_request.execution_status = execution_state.lower() if isinstance(execution_state, str) else str(execution_state)
         
         # Se concluído, salvar os dados retornados e buscar jogos no retrogames.cc
-        if execution_status == 'completed' or execution_status == 'success':
-            if 'data' in status_data:
-                game_request.ai_response_data = status_data.get('data')
-            elif 'result' in status_data:
-                game_request.ai_response_data = status_data.get('result')
-            else:
-                game_request.ai_response_data = status_data
+        if execution_state == 'SUCCESS':
+            # Salvar toda a resposta da API
+            game_request.ai_response_data = status_data
             
-            # Se a IA retornou nomes de jogos, buscar no retrogames.cc
+            # Processar o resultado que vem como string com nomes separados por \n
             retrogames_results = []
-            if game_request.ai_response_data:
-                # Tentar extrair nomes de jogos da resposta da IA
-                game_names = []
+            game_names = []
+            
+            # Extrair nomes de jogos do campo 'result'
+            if 'result' in status_data and status_data['result']:
+                result_text = str(status_data['result']).strip()
                 
-                # Se a resposta contém uma lista de nomes
-                if isinstance(game_request.ai_response_data, dict):
-                    # Tentar diferentes campos possíveis
-                    if 'names' in game_request.ai_response_data:
-                        game_names = game_request.ai_response_data['names']
-                    elif 'games' in game_request.ai_response_data:
-                        if isinstance(game_request.ai_response_data['games'], list):
-                            game_names = [g.get('name', g) if isinstance(g, dict) else g for g in game_request.ai_response_data['games']]
-                    elif 'results' in game_request.ai_response_data:
-                        if isinstance(game_request.ai_response_data['results'], list):
-                            game_names = [r.get('name', r) if isinstance(r, dict) else r for r in game_request.ai_response_data['results']]
-                elif isinstance(game_request.ai_response_data, list):
-                    # Se for uma lista direta
-                    game_names = [item.get('name', item) if isinstance(item, dict) else item for item in game_request.ai_response_data]
-                
-                # Se não encontrou nomes na estrutura, usar o título da requisição
-                if not game_names:
-                    game_names = [game_request.title]
-                
-                # Buscar jogos no retrogames.cc
-                try:
-                    print(f"Buscando jogos no retrogames.cc para: {game_names}")
-                    retrogames_results = search_multiple_games(game_names, max_results_per_game=5)
+                # Dividir por quebras de linha e limpar cada nome
+                if result_text:
+                    game_names = [
+                        name.strip() 
+                        for name in result_text.split('\n') 
+                        if name.strip()  # Remover linhas vazias
+                    ]
                     
-                    # Adicionar resultados ao ai_response_data
-                    if isinstance(game_request.ai_response_data, dict):
-                        game_request.ai_response_data['retrogames_results'] = retrogames_results
-                    else:
-                        # Se não for dict, converter
-                        game_request.ai_response_data = {
-                            'ai_data': game_request.ai_response_data,
-                            'retrogames_results': retrogames_results
-                        }
-                    print(f"Encontrados {len(retrogames_results)} jogos no retrogames.cc")
-                except Exception as e:
-                    print(f"Erro ao buscar jogos no retrogames.cc: {str(e)}")
-                    import traceback
-                    traceback.print_exc()
+                    # Remover duplicatas mantendo a ordem
+                    seen = set()
+                    game_names = [
+                        name for name in game_names 
+                        if name and (name.lower() not in seen or seen.add(name.lower()))
+                    ]
+            
+            # Se também há resultado em last_executed_task/output
+            if not game_names and 'last_executed_task' in status_data:
+                task_output = status_data['last_executed_task'].get('output', '')
+                if task_output:
+                    result_text = str(task_output).strip()
+                    if result_text:
+                        game_names = [
+                            name.strip() 
+                            for name in result_text.split('\n') 
+                            if name.strip()
+                        ]
+                        # Remover duplicatas
+                        seen = set()
+                        game_names = [
+                            name for name in game_names 
+                            if name and (name.lower() not in seen or seen.add(name.lower()))
+                        ]
+            
+            # Se não encontrou nomes, usar o título da requisição
+            if not game_names:
+                game_names = [game_request.title]
+            
+            # Buscar jogos no retrogames.cc
+            try:
+                print(f"Buscando jogos no retrogames.cc para: {game_names}")
+                retrogames_results = search_multiple_games(game_names, max_results_per_game=5)
+                
+                # Adicionar resultados ao ai_response_data
+                if isinstance(game_request.ai_response_data, dict):
+                    game_request.ai_response_data['game_names'] = game_names
+                    game_request.ai_response_data['retrogames_results'] = retrogames_results
+                else:
+                    # Se não for dict, converter
+                    game_request.ai_response_data = {
+                        'ai_data': game_request.ai_response_data,
+                        'game_names': game_names,
+                        'retrogames_results': retrogames_results
+                    }
+                print(f"Encontrados {len(retrogames_results)} jogos no retrogames.cc")
+            except Exception as e:
+                print(f"Erro ao buscar jogos no retrogames.cc: {str(e)}")
+                import traceback
+                traceback.print_exc()
         
         game_request.save()
         
+        # Preparar dados de resposta
         response_data = {
-            'status': execution_status,
+            'status': game_request.execution_status,
+            'state': execution_state,  # Estado original da API (SUCCESS, RUNNING, etc.)
             'data': game_request.ai_response_data,
             'kickoff_id': game_request.kickoff_id
         }
         
-        # Incluir resultados do retrogames.cc se disponíveis
+        # Incluir nomes de jogos extraídos e resultados do retrogames.cc se disponíveis
         if game_request.ai_response_data and isinstance(game_request.ai_response_data, dict):
+            if 'game_names' in game_request.ai_response_data:
+                response_data['game_names'] = game_request.ai_response_data['game_names']
             if 'retrogames_results' in game_request.ai_response_data:
                 response_data['retrogames_results'] = game_request.ai_response_data['retrogames_results']
         
@@ -767,50 +839,128 @@ def admin_check_api_status(request, pk):
 def admin_search_retrogames(request, pk):
     """
     View para buscar jogos no retrogames.cc manualmente ou via AJAX.
+    Aceita POST ou GET com parâmetro 'query' para buscar um jogo específico.
     """
     import traceback
     game_request = get_object_or_404(GameRequest, pk=pk)
     
-    if request.method == 'POST':
-        # Busca manual via AJAX
-        query = request.POST.get('query') or request.GET.get('query') or game_request.ai_query or game_request.title
-        
-        try:
-            results = search_games_on_retrogames(query, max_results=5)
-            
-            # Salvar resultados no game_request
-            if not game_request.ai_response_data:
-                game_request.ai_response_data = {}
-            if not isinstance(game_request.ai_response_data, dict):
-                game_request.ai_response_data = {'ai_data': game_request.ai_response_data}
-            
-            game_request.ai_response_data['retrogames_results'] = results
-            game_request.save()
-            
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'success': True,
-                    'results': results,
-                    'count': len(results)
-                })
-            
-            messages.success(request, f'Encontrados {len(results)} jogos no retrogames.cc')
-            return redirect('admin_game_request_detail', pk=pk)
-            
-        except Exception as e:
-            error_msg = f'Erro ao buscar jogos: {str(e)}'
-            print(f"Erro ao buscar jogos: {traceback.format_exc()}")
-            
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'error': error_msg
-                }, status=500)
-            
-            messages.error(request, error_msg)
-            return redirect('admin_game_request_detail', pk=pk)
+    # Obter query da requisição (POST, GET ou usar valores padrão)
+    query = request.POST.get('query') or request.GET.get('query')
     
-    # GET - apenas redirecionar para detalhes
-    return redirect('admin_game_request_detail', pk=pk)
+    if not query:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'error': 'Parâmetro "query" é obrigatório'
+            }, status=400)
+        messages.error(request, 'Parâmetro de busca não fornecido.')
+        return redirect('admin_game_request_detail', pk=pk)
+    
+    try:
+        results = search_games_on_retrogames(query, max_results=5)
+        
+        # Salvar resultados no banco de dados (tanto para AJAX quanto para requisições normais)
+        if not game_request.ai_response_data:
+            game_request.ai_response_data = {}
+        if not isinstance(game_request.ai_response_data, dict):
+            game_request.ai_response_data = {'ai_data': game_request.ai_response_data}
+        
+        game_request.ai_response_data['retrogames_results'] = results
+        game_request.save()
+        
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': True,
+                'results': results,
+                'count': len(results),
+                'query': query
+            })
+        
+        # Se não for AJAX, redirecionar
+        messages.success(request, f'Encontrados {len(results)} jogos no retrogames.cc')
+        return redirect('admin_game_request_detail', pk=pk)
+        
+    except Exception as e:
+        error_msg = f'Erro ao buscar jogos: {str(e)}'
+        print(f"Erro ao buscar jogos: {traceback.format_exc()}")
+        
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'error': error_msg
+            }, status=500)
+        
+        messages.error(request, error_msg)
+        return redirect('admin_game_request_detail', pk=pk)
+
+
+@user_passes_test(staff_required, login_url='home')
+@require_http_methods(["GET"])
+def admin_extract_embed_link(request, pk):
+    """
+    View para extrair o link do embed de uma página do retrogames.cc.
+    Busca o textarea readonly na página embed e extrai a URL do jogo.
+    """
+    from .utils import _extract_embed_url
+    
+    # Garantir que sempre retorna JSON
+    embed_url = request.GET.get('embed_url')
+    if not embed_url:
+        return JsonResponse({
+            'error': 'Parâmetro "embed_url" é obrigatório',
+            'success': False
+        }, status=400, content_type='application/json')
+    
+    try:
+        logger.info(f"DEBUG - View admin_extract_embed_link chamada com embed_url: {embed_url}")
+        print(f"DEBUG - View admin_extract_embed_link chamada com embed_url: {embed_url}")
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+        }
+        
+        # A função _extract_embed_url busca o textarea readonly e extrai o link
+        logger.info(f"DEBUG - Chamando _extract_embed_url com URL: {embed_url}")
+        print(f"DEBUG - Chamando _extract_embed_url com URL: {embed_url}")
+        
+        extracted_url = _extract_embed_url(embed_url, headers)
+        
+        logger.info(f"DEBUG - Resultado de _extract_embed_url: {extracted_url}")
+        print(f"DEBUG - Resultado de _extract_embed_url: {extracted_url}")
+        
+        if extracted_url:
+            logger.info(f"DEBUG - Sucesso! URL extraída: {extracted_url}")
+            print(f"DEBUG - Sucesso! URL extraída: {extracted_url}")
+            return JsonResponse({
+                'success': True,
+                'url': extracted_url
+            }, content_type='application/json')
+        else:
+            logger.warning(f"DEBUG - Falha: Não foi possível extrair URL do embed")
+            print("DEBUG - Falha: Não foi possível extrair URL do embed")
+            return JsonResponse({
+                'success': False,
+                'error': 'Não foi possível extrair o link do embed. Textarea readonly não encontrado ou sem URL válida.',
+                'debug_info': {
+                    'embed_url_requested': embed_url,
+                    'message': 'Verifique os logs do servidor para mais detalhes'
+                }
+            }, status=404, content_type='application/json')
+            
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        logger.error(f"DEBUG - Exceção na view admin_extract_embed_link: {str(e)}")
+        logger.error(f"DEBUG - Traceback completo:\n{error_trace}")
+        print(f"DEBUG - Exceção na view admin_extract_embed_link: {str(e)}")
+        print(f"DEBUG - Traceback completo:\n{error_trace}")
+        return JsonResponse({
+            'success': False,
+            'error': f'Erro ao extrair link: {str(e)}',
+            'debug_info': {
+                'traceback': error_trace[:500]  # Limitar tamanho do traceback
+            }
+        }, status=500, content_type='application/json')
 
 
 @user_passes_test(staff_required, login_url='home')

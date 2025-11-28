@@ -28,6 +28,7 @@ urlpatterns = [
     path('admin/game-requests/<int:pk>/reject/', games_views.admin_reject_request, name='admin_reject_request'),
     path('admin/game-requests/<int:pk>/check-status/', games_views.admin_check_api_status, name='admin_check_api_status'),
     path('admin/game-requests/<int:pk>/search-retrogames/', games_views.admin_search_retrogames, name='admin_search_retrogames'),
+    path('admin/game-requests/<int:pk>/extract-embed-link/', games_views.admin_extract_embed_link, name='admin_extract_embed_link'),
     path('admin/game-requests/<int:pk>/create-game/', games_views.admin_create_game_from_request, name='admin_create_game_from_request'),
     
     # Django Admin padrão

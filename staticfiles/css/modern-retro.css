@@ -1,0 +1,910 @@
+/* Modern Retro Games Cloud - CSS Limpo e Moderno */
+
+/* Importar fontes modernas */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+
+/* Variáveis CSS para cores modernas */
+:root {
+    /* Cores principais */
+    --primary-bg: #0a0a0a;
+    --secondary-bg: #111111;
+    --card-bg: #1a1a1a;
+    --surface-bg: #222222;
+    
+    /* Cores de destaque */
+    --accent-cyan: #00d4ff;
+    --accent-green: #00ff88;
+    --accent-purple: #8b5cf6;
+    --accent-orange: #ff6b35;
+    --accent-pink: #ff0080;
+    
+    /* Cores de texto - melhoradas para visibilidade */
+    --text-primary: #ffffff;
+    --text-secondary: #d0d0d0;
+    --text-muted: #888888;
+    --text-accent: #00d4ff;
+    
+    /* Cores de borda */
+    --border-primary: #333333;
+    --border-accent: #00d4ff;
+    
+    /* Sombras */
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 20px rgba(0, 212, 255, 0.3);
+    
+    /* Transições */
+    --transition-fast: 0.2s ease;
+    --transition-normal: 0.3s ease;
+    --transition-slow: 0.5s ease;
+}
+
+/* Reset e configurações globais */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--primary-bg);
+    color: var(--text-primary);
+    line-height: 1.6;
+    overflow-x: hidden;
+    font-weight: 400;
+}
+
+/* Efeito de fundo sutil */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        radial-gradient(circle at 20% 80%, rgba(0, 212, 255, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(0, 255, 136, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(139, 92, 246, 0.03) 0%, transparent 50%);
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* Grid sutil */
+body::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        linear-gradient(rgba(0, 212, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 212, 255, 0.02) 1px, transparent 1px);
+    background-size: 40px 40px;
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* Tipografia moderna */
+.retro-title {
+    font-family: 'Orbitron', monospace;
+    font-weight: 700;
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    color: var(--text-primary);
+    text-align: center;
+    margin-bottom: 1rem;
+    letter-spacing: -0.02em;
+}
+
+.retro-subtitle {
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 1.125rem;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.retro-heading {
+    font-family: 'Orbitron', monospace;
+    font-weight: 600;
+    font-size: 1.5rem;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+}
+
+.retro-text {
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+}
+
+/* Melhorias de visibilidade para textos */
+p, div, span, label, small {
+    color: var(--text-secondary);
+}
+
+strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.form-label, label {
+    color: var(--text-primary) !important;
+    font-weight: 500;
+}
+
+.form-text, .text-muted {
+    color: var(--text-muted) !important;
+}
+
+.text-danger {
+    color: #ff6b6b !important;
+}
+
+.text-success {
+    color: var(--accent-green) !important;
+}
+
+.text-info {
+    color: var(--accent-cyan) !important;
+}
+
+.text-warning {
+    color: var(--accent-orange) !important;
+}
+
+/* Melhorias para inputs e selects */
+input, textarea, select {
+    color: var(--text-primary) !important;
+}
+
+input::placeholder, textarea::placeholder {
+    color: var(--text-muted) !important;
+}
+
+/* Melhorias para tabelas */
+table {
+    color: var(--text-secondary);
+}
+
+table th {
+    color: var(--text-primary) !important;
+    font-weight: 600;
+}
+
+table td {
+    color: var(--text-secondary) !important;
+}
+
+/* Melhorias para alertas do Bootstrap */
+.alert {
+    color: var(--text-primary) !important;
+}
+
+.alert-info {
+    background-color: rgba(0, 212, 255, 0.1) !important;
+    border-color: var(--accent-cyan) !important;
+    color: var(--accent-cyan) !important;
+}
+
+.alert-success {
+    background-color: rgba(0, 255, 136, 0.1) !important;
+    border-color: var(--accent-green) !important;
+    color: var(--accent-green) !important;
+}
+
+.alert-warning {
+    background-color: rgba(255, 107, 53, 0.1) !important;
+    border-color: var(--accent-orange) !important;
+    color: var(--accent-orange) !important;
+}
+
+.alert-danger {
+    background-color: rgba(255, 107, 53, 0.1) !important;
+    border-color: #ff6b6b !important;
+    color: #ff6b6b !important;
+}
+
+/* Melhorias para breadcrumb */
+.breadcrumb-item {
+    color: var(--text-secondary) !important;
+}
+
+.breadcrumb-item.active {
+    color: var(--text-primary) !important;
+}
+
+/* Melhorias para badges do Bootstrap */
+.badge {
+    color: var(--primary-bg) !important;
+}
+
+/* Melhorias para código */
+code {
+    background-color: var(--surface-bg);
+    color: var(--accent-cyan);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Melhorias adicionais para visibilidade */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary) !important;
+}
+
+small {
+    color: var(--text-secondary) !important;
+}
+
+/* Melhorias para selects do Bootstrap */
+select.form-control,
+select.modern-input {
+    background-color: var(--surface-bg) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-primary) !important;
+}
+
+select.form-control option,
+select.modern-input option {
+    background-color: var(--card-bg) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Melhorias para checkboxes e radio buttons */
+.form-check-label {
+    color: var(--text-secondary) !important;
+}
+
+.form-check-input:checked {
+    background-color: var(--accent-cyan) !important;
+    border-color: var(--accent-cyan) !important;
+}
+
+/* Melhorias para links */
+a {
+    color: var(--accent-cyan) !important;
+}
+
+a:hover {
+    color: var(--accent-green) !important;
+}
+
+/* Melhorias para tabelas escuras do Bootstrap */
+.table-dark {
+    background-color: var(--card-bg) !important;
+    color: var(--text-secondary) !important;
+}
+
+.table-dark th,
+.table-dark td,
+.table-dark thead th {
+    border-color: var(--border-primary) !important;
+    color: var(--text-secondary) !important;
+}
+
+.table-dark thead th {
+    color: var(--text-primary) !important;
+    font-weight: 600;
+}
+
+.table-hover tbody tr:hover {
+    background-color: var(--surface-bg) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Navegação moderna */
+.modern-navbar {
+    background: rgba(10, 10, 10, 0.95);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-primary);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    transition: var(--transition-normal);
+}
+
+.modern-navbar .navbar-brand {
+    font-family: 'Orbitron', monospace;
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: var(--accent-cyan) !important;
+    text-decoration: none;
+    transition: var(--transition-fast);
+}
+
+.modern-navbar .navbar-brand:hover {
+    color: var(--accent-green) !important;
+    transform: translateY(-1px);
+}
+
+.modern-navbar .nav-link {
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    color: var(--text-secondary) !important;
+    text-decoration: none;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    transition: var(--transition-fast);
+    position: relative;
+}
+
+.modern-navbar .nav-link:hover {
+    color: var(--text-primary) !important;
+    background: rgba(0, 212, 255, 0.1);
+}
+
+.modern-navbar .nav-link.active {
+    color: var(--accent-cyan) !important;
+    background: rgba(0, 212, 255, 0.15);
+}
+
+/* Cards modernos */
+.modern-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-primary);
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: var(--shadow-md);
+    transition: var(--transition-normal);
+    position: relative;
+    overflow: hidden;
+}
+
+.modern-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+    opacity: 0;
+    transition: var(--transition-normal);
+}
+
+.modern-card:hover {
+    border-color: var(--border-accent);
+    box-shadow: var(--shadow-lg), var(--shadow-glow);
+    transform: translateY(-4px);
+}
+
+.modern-card:hover::before {
+    opacity: 1;
+}
+
+/* Game cards específicos */
+.game-card-modern {
+    background: var(--card-bg);
+    border: 1px solid var(--border-primary);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: var(--transition-normal);
+    position: relative;
+    height: 100%;
+}
+
+.game-card-modern:hover {
+    border-color: var(--accent-cyan);
+    box-shadow: var(--shadow-lg), var(--shadow-glow);
+    transform: translateY(-8px);
+}
+
+.game-image-modern {
+    height: 200px;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: relative;
+    overflow: hidden;
+}
+
+.game-image-modern::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, 
+        rgba(0, 212, 255, 0.1) 0%, 
+        transparent 50%, 
+        rgba(0, 255, 136, 0.1) 100%);
+    opacity: 0;
+    transition: var(--transition-normal);
+}
+
+.game-card-modern:hover .game-image-modern::after {
+    opacity: 1;
+}
+
+.game-title-modern {
+    padding: 1.5rem;
+    background: var(--surface-bg);
+}
+
+.game-title-modern h5 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+}
+
+.game-console-modern {
+    display: inline-block;
+    background: var(--accent-cyan);
+    color: var(--primary-bg);
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Botões modernos */
+.modern-btn {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.875rem;
+    padding: 0.75rem 1.5rem;
+    border: 1px solid;
+    border-radius: 12px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: var(--transition-fast);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
+}
+
+/* Garantir que o conteúdo do botão fique acima do efeito */
+.modern-btn > * {
+    position: relative;
+    z-index: 2;
+}
+
+.modern-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(255, 255, 255, 0.1), 
+        transparent);
+    transition: var(--transition-normal);
+    z-index: 0;
+    pointer-events: none;
+}
+
+.modern-btn:hover::before {
+    left: 100%;
+}
+
+.modern-btn-primary {
+    background: var(--accent-cyan);
+    border-color: var(--accent-cyan);
+    color: var(--primary-bg) !important;
+}
+
+.modern-btn-primary:hover {
+    background: var(--accent-green);
+    border-color: var(--accent-green);
+    color: var(--primary-bg) !important;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow);
+}
+
+.modern-btn-secondary {
+    background: transparent;
+    border-color: var(--border-primary);
+    color: var(--text-primary) !important;
+}
+
+.modern-btn-secondary:hover {
+    background: var(--surface-bg);
+    border-color: var(--accent-cyan);
+    color: var(--accent-cyan) !important;
+    transform: translateY(-2px);
+}
+
+.modern-btn-danger {
+    background: transparent;
+    border-color: var(--accent-orange);
+    color: var(--accent-orange) !important;
+}
+
+.modern-btn-danger:hover {
+    background: var(--accent-orange);
+    color: var(--primary-bg) !important;
+    transform: translateY(-2px);
+}
+
+.modern-btn-success {
+    background: var(--accent-green);
+    border-color: var(--accent-green);
+    color: var(--primary-bg) !important;
+}
+
+.modern-btn-success:hover {
+    background: var(--accent-cyan);
+    border-color: var(--accent-cyan);
+    color: var(--primary-bg) !important;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow);
+}
+
+.modern-btn-outline {
+    background: transparent;
+    border-color: var(--accent-cyan);
+    color: var(--accent-cyan) !important;
+}
+
+.modern-btn-outline:hover {
+    background: var(--accent-cyan);
+    border-color: var(--accent-cyan);
+    color: var(--primary-bg) !important;
+    transform: translateY(-2px);
+}
+
+/* Garantir visibilidade do texto em botões combinados com Bootstrap */
+.btn.modern-btn,
+button.modern-btn {
+    color: inherit !important;
+}
+
+.btn.modern-btn-primary,
+button.modern-btn-primary {
+    color: var(--primary-bg) !important;
+}
+
+.btn.modern-btn-secondary,
+button.modern-btn-secondary {
+    color: var(--text-primary) !important;
+}
+
+.btn.modern-btn-secondary:hover,
+button.modern-btn-secondary:hover {
+    color: var(--accent-cyan) !important;
+}
+
+.btn.modern-btn-danger,
+button.modern-btn-danger {
+    color: var(--accent-orange) !important;
+}
+
+.btn.modern-btn-danger:hover,
+button.modern-btn-danger:hover {
+    color: var(--primary-bg) !important;
+}
+
+.btn.modern-btn-success,
+button.modern-btn-success {
+    color: var(--primary-bg) !important;
+}
+
+/* Garantir que ícones e textos dentro dos botões sejam visíveis */
+.modern-btn i,
+.modern-btn span,
+.modern-btn svg {
+    position: relative;
+    z-index: 2;
+    color: inherit;
+}
+
+/* Formulários modernos */
+.modern-form {
+    background: var(--card-bg);
+    border: 1px solid var(--border-primary);
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: var(--shadow-md);
+}
+
+.modern-input {
+    background: var(--surface-bg);
+    border: 1px solid var(--border-primary);
+    border-radius: 12px;
+    color: var(--text-primary);
+    padding: 0.875rem 1rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    transition: var(--transition-fast);
+    width: 100%;
+}
+
+.modern-input:focus {
+    outline: none;
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+    background: var(--card-bg);
+}
+
+.modern-input::placeholder {
+    color: var(--text-muted) !important;
+    font-family: 'Inter', sans-serif;
+    opacity: 0.7;
+}
+
+.modern-label {
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+/* Alertas modernos */
+.modern-alert {
+    background: var(--surface-bg);
+    border: 1px solid;
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    margin: 1rem 0;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    position: relative;
+    overflow: hidden;
+}
+
+.modern-alert-success {
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+    background: rgba(0, 255, 136, 0.05);
+}
+
+.modern-alert-danger {
+    border-color: var(--accent-orange);
+    color: var(--accent-orange);
+    background: rgba(255, 107, 53, 0.05);
+}
+
+.modern-alert-info {
+    border-color: var(--accent-cyan);
+    color: var(--accent-cyan);
+    background: rgba(0, 212, 255, 0.05);
+}
+
+.modern-alert-warning {
+    border-color: var(--accent-purple);
+    color: var(--accent-purple);
+    background: rgba(139, 92, 246, 0.05);
+}
+
+/* Badges modernos */
+.modern-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.375rem 0.75rem;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-block;
+    margin: 0.125rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+.modern-badge-primary {
+    background: var(--accent-cyan);
+    color: var(--primary-bg);
+}
+
+.modern-badge-success {
+    background: var(--accent-green);
+    color: var(--primary-bg);
+}
+
+.modern-badge-warning {
+    background: var(--accent-orange);
+    color: var(--primary-bg);
+}
+
+.modern-badge-purple {
+    background: var(--accent-purple);
+    color: var(--primary-bg);
+}
+
+/* Filtros modernos */
+.modern-filters {
+    background: var(--card-bg);
+    border: 1px solid var(--border-primary);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin: 2rem 0;
+    box-shadow: var(--shadow-md);
+}
+
+.filter-btn-modern {
+    background: transparent;
+    border: 1px solid var(--border-primary);
+    color: var(--text-secondary);
+    padding: 0.5rem 1rem;
+    margin: 0.25rem;
+    border-radius: 20px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 0.875rem;
+    text-decoration: none;
+    transition: var(--transition-fast);
+    display: inline-block;
+}
+
+.filter-btn-modern:hover,
+.filter-btn-modern.active {
+    background: var(--accent-cyan);
+    border-color: var(--accent-cyan);
+    color: var(--primary-bg);
+    transform: translateY(-1px);
+}
+
+/* Breadcrumb moderno */
+.modern-breadcrumb {
+    background: transparent;
+    padding: 0;
+    margin-bottom: 2rem;
+}
+
+.modern-breadcrumb .breadcrumb-item {
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.modern-breadcrumb .breadcrumb-item a {
+    color: var(--accent-cyan);
+    text-decoration: none;
+    transition: var(--transition-fast);
+}
+
+.modern-breadcrumb .breadcrumb-item a:hover {
+    color: var(--accent-green);
+}
+
+.modern-breadcrumb .breadcrumb-item + .breadcrumb-item::before {
+    content: "→";
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+/* Animações modernas */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+@keyframes glow {
+    0%, 100% {
+        box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 30px rgba(0, 212, 255, 0.6);
+    }
+}
+
+.animate-fade-in {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+.animate-pulse {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.animate-glow {
+    animation: glow 3s ease-in-out infinite;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .retro-title {
+        font-size: 2rem;
+    }
+    
+    .modern-card {
+        padding: 1.5rem;
+    }
+    
+    .game-image-modern {
+        height: 160px;
+    }
+    
+    .modern-navbar .navbar-brand {
+        font-size: 1.25rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .modern-card {
+        padding: 1rem;
+    }
+    
+    .modern-btn {
+        padding: 0.625rem 1.25rem;
+        font-size: 0.8rem;
+    }
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--secondary-bg);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--accent-cyan);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-green);
+}
+
+/* Utilitários */
+.text-gradient {
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-green));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.border-gradient {
+    border: 1px solid;
+    border-image: linear-gradient(135deg, var(--accent-cyan), var(--accent-green)) 1;
+}
+
+.shadow-glow {
+    box-shadow: var(--shadow-glow);
+}
+
+/* Estados de loading */
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border-primary);
+    border-radius: 50%;
+    border-top-color: var(--accent-cyan);
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
