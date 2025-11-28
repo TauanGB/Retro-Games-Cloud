@@ -779,22 +779,27 @@ function updateApiResults(data) {
 }
 
 function startPolling() {
+    // Prevenir múltiplas inicializações
     if (pollingInterval) {
-        clearInterval(pollingInterval);
+        console.log('Polling já está ativo, ignorando nova inicialização');
+        return;
     }
     
     checkApiStatus();
     pollingInterval = setInterval(checkApiStatus, 3000); // Verificar a cada 3 segundos
+    console.log('Polling iniciado');
 }
 
 function stopPolling() {
     if (pollingInterval) {
         clearInterval(pollingInterval);
         pollingInterval = null;
+        console.log('Polling parado');
     }
     if (progressInterval) {
         clearInterval(progressInterval);
         progressInterval = null;
+        console.log('Progress animation parada');
     }
 }
 
@@ -875,24 +880,29 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Verificar status inicial e iniciar polling se necessário
     {% if game_request.status == 'approved' %}
-    const initialStatus = '{{ game_request.execution_status|default:"" }}';
-    
-    // Sempre verificar o status inicial ao carregar a página
-    // Aguardar um pouco para garantir que o DOM está pronto
-    setTimeout(() => {
-        checkApiStatus();
+    // Prevenir múltiplas inicializações usando flag
+    if (!window.pollingInitialized) {
+        const initialStatus = '{{ game_request.execution_status|default:"" }}';
         
-        // Se está rodando ou não tem status definido, iniciar polling
-        if (initialStatus === 'running' || !initialStatus) {
-            startPolling();
-        }
-        // Se já está completed/success ou failed, não iniciar polling
+        // Sempre verificar o status inicial ao carregar a página
+        // Aguardar um pouco para garantir que o DOM está pronto
+        setTimeout(() => {
+            checkApiStatus();
+            
+            // Se está rodando ou não tem status definido, iniciar polling
+            if (initialStatus === 'running' || !initialStatus) {
+                startPolling();
+            }
+            // Se já está completed/success ou failed, não iniciar polling
+            
+            // Se o status inicial é 'running', iniciar animação da barra de progresso
+            if (initialStatus === 'running') {
+                animateProgress();
+            }
+        }, 500);
         
-        // Se o status inicial é 'running', iniciar animação da barra de progresso
-        if (initialStatus === 'running') {
-            animateProgress();
-        }
-    }, 500);
+        window.pollingInitialized = true;
+    }
     {% endif %}
     
     // Interceptar busca manual no retrogames.cc
@@ -1120,7 +1130,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // Função para abrir embed e extrair link do textarea readonly
     function openEmbedAndExtractLink(embedUrl, buttonElement) {
         const button = buttonElement;
+        
+        // Prevenir múltiplas chamadas simultâneas
+        if (button.disabled || button.dataset.processing === 'true') {
+            console.log('Função já está processando, ignorando nova chamada');
+            return;
+        }
+        
         const originalText = button.innerHTML;
+        
+        // Marcar como processando
+        button.dataset.processing = 'true';
         
         // Desabilitar botão e mostrar loading
         button.disabled = true;
@@ -1165,6 +1185,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Restaurar botão com feedback
                 button.disabled = false;
+                button.dataset.processing = 'false';
                 button.innerHTML = '<i class="fas fa-check me-2"></i>Link Extraído!';
                 setTimeout(() => {
                     button.innerHTML = originalText;
@@ -1184,21 +1205,32 @@ document.addEventListener('DOMContentLoaded', function() {
             
             alert('Erro ao extrair link do embed: ' + errorMessage);
             button.disabled = false;
+            button.dataset.processing = 'false';
             button.innerHTML = originalText;
         });
     }
     
-    // Adicionar event listeners para botões de abrir embed
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('.open-embed-btn')) {
-            e.preventDefault();
-            const button = e.target.closest('.open-embed-btn');
-            const embedUrl = button.getAttribute('data-embed-url');
-            if (embedUrl) {
-                openEmbedAndExtractLink(embedUrl, button);
+    // Adicionar event listeners para botões de abrir embed (usar delegação de eventos para evitar múltiplos listeners)
+    // Usar uma flag para garantir que o listener só seja adicionado uma vez
+    if (!window.embedButtonListenerAdded) {
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.open-embed-btn')) {
+                e.preventDefault();
+                const button = e.target.closest('.open-embed-btn');
+                
+                // Prevenir múltiplos cliques enquanto está processando
+                if (button.disabled) {
+                    return;
+                }
+                
+                const embedUrl = button.getAttribute('data-embed-url');
+                if (embedUrl) {
+                    openEmbedAndExtractLink(embedUrl, button);
+                }
             }
-        }
-    });
+        });
+        window.embedButtonListenerAdded = true;
+    }
     
     // Função para exibir resultados de busca de um jogo
     function displayGameSearchResults(container, results, gameName) {
