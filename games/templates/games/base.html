@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="PWA educacional para TDE - Catálogo de jogos retro com emulador via retrogames.cc">
     <meta name="theme-color" content="#1a1a2e">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Jogos Retro">
     
     <title>{% block title %}Jogos Retro - TDE{% endblock %}</title>
     
@@ -86,7 +90,7 @@
                     {% endif %}
                     <!-- Botão de Instalação PWA (apenas quando logado) -->
                     <li class="nav-item">
-                        <button id="pwa-install-button" class="nav-link btn btn-link text-decoration-none pwa-install-btn" style="display: none;" title="Instalar App no dispositivo">
+                        <button id="pwa-install-button" class="nav-link btn btn-link text-decoration-none pwa-install-btn" title="Instalar App no dispositivo">
                             <i class="fas fa-download me-1"></i>Instalar App
                         </button>
                     </li>
@@ -164,14 +168,23 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('{% static "service-worker.js" %}')
+                navigator.serviceWorker.register('{% static "service-worker.js" %}', {
+                    scope: '/'
+                })
                     .then(function(registration) {
-                        console.log('ServiceWorker registrado com sucesso:', registration.scope);
+                        console.log('[Service Worker] Registrado com sucesso:', registration.scope);
+                        
+                        // Verificar atualizações periodicamente
+                        setInterval(function() {
+                            registration.update();
+                        }, 60000); // Verificar a cada minuto
                     })
                     .catch(function(error) {
-                        console.log('Falha ao registrar ServiceWorker:', error);
+                        console.error('[Service Worker] Falha ao registrar:', error);
                     });
             });
+        } else {
+            console.warn('[Service Worker] Não suportado neste navegador');
         }
     </script>
     

@@ -1,9 +1,9 @@
 // Service Worker para PWA - Jogos Retro TDE
 // Cache básico para funcionamento offline da interface
 
-const CACHE_NAME = 'jogos-retro-tde-v1';
-const STATIC_CACHE = 'static-v1';
-const DYNAMIC_CACHE = 'dynamic-v1';
+const CACHE_VERSION = 'v2';
+const STATIC_CACHE = `static-${CACHE_VERSION}`;
+const DYNAMIC_CACHE = `dynamic-${CACHE_VERSION}`;
 
 // Arquivos estáticos para cache (app shell)
 const STATIC_FILES = [
@@ -11,51 +11,51 @@ const STATIC_FILES = [
     '/catalog/',
     '/static/css/modern-retro.css',
     '/static/manifest.json',
+    '/static/games/js/pwa-install.js',
     // Adicionar outros arquivos estáticos conforme necessário
 ];
 
 // Instalação do Service Worker
 self.addEventListener('install', (event) => {
-    console.log('[Service Worker] Instalando...');
+    console.log('[Service Worker] Instalando versão', CACHE_VERSION);
     
     event.waitUntil(
         caches.open(STATIC_CACHE)
             .then((cache) => {
                 console.log('[Service Worker] Cacheando arquivos estáticos');
                 // Cache apenas arquivos críticos na instalação
-                return cache.addAll([
-                    '/',
-                    '/static/css/modern-retro.css',
-                ]).catch((error) => {
+                return cache.addAll(STATIC_FILES).catch((error) => {
                     console.log('[Service Worker] Erro ao cachear arquivos:', error);
+                    // Continuar mesmo se alguns arquivos falharem
                 });
             })
+            .then(() => {
+                // Forçar ativação imediata
+                return self.skipWaiting();
+            })
     );
-    
-    // Forçar ativação imediata
-    self.skipWaiting();
 });
 
 // Ativação do Service Worker
 self.addEventListener('activate', (event) => {
-    console.log('[Service Worker] Ativando...');
+    console.log('[Service Worker] Ativando versão', CACHE_VERSION);
     
     event.waitUntil(
         caches.keys().then((cacheNames) => {
             return Promise.all(
                 cacheNames.map((cacheName) => {
                     // Remover caches antigos
-                    if (cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE) {
+                    if (!cacheName.includes(CACHE_VERSION)) {
                         console.log('[Service Worker] Removendo cache antigo:', cacheName);
                         return caches.delete(cacheName);
                     }
                 })
             );
+        }).then(() => {
+            // Assumir controle imediato de todas as páginas
+            return self.clients.claim();
         })
     );
-    
-    // Assumir controle imediato de todas as páginas
-    return self.clients.claim();
 });
 
 // Interceptação de requisições (estrategia: Network First, fallback para Cache)
@@ -98,7 +98,8 @@ self.addEventListener('fetch', (event) => {
                     }
                     
                     // Se não estiver no cache e for uma página HTML, retornar página offline
-                    if (request.headers.get('accept').includes('text/html')) {
+                    const acceptHeader = request.headers.get('accept') || '';
+                    if (acceptHeader.includes('text/html')) {
                         return caches.match('/').then((offlinePage) => {
                             return offlinePage || new Response('Offline - Conecte-se à internet', {
                                 status: 503,

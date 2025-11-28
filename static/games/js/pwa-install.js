@@ -155,8 +155,10 @@ async function installPWA() {
         // Se não houver prompt, pode ser que o PWA já esteja instalado
         if (isPWAInstalled()) {
             alert('O app já está instalado!');
+            hideInstallButton();
         } else {
-            alert('Instalação não disponível no momento. Tente novamente mais tarde.');
+            // Manter o botão visível mesmo sem prompt - o usuário pode tentar novamente depois
+            alert('Instalação não disponível no momento. O navegador pode mostrar o prompt automaticamente em breve, ou você pode tentar instalar através do menu do navegador.');
         }
         return;
     }
@@ -179,8 +181,8 @@ async function installPWA() {
     // Limpar o prompt
     deferredPrompt = null;
     
-    // Esconder o botão de instalação
-    hideInstallButton();
+    // Não esconder o botão - mantê-lo visível para futuras tentativas
+    // O botão só será escondido quando o app for realmente instalado
     
     // Fechar a notificação
     dismissInstallNotification();
@@ -230,11 +232,26 @@ window.addEventListener('appinstalled', () => {
     dismissInstallNotification();
 });
 
+// Verificar periodicamente se o PWA pode ser instalado
+function checkInstallability() {
+    // Verificar se já está instalado
+    if (isPWAInstalled()) {
+        hideInstallButton();
+        return;
+    }
+    
+    // Se não houver deferredPrompt mas o usuário está logado, manter botão visível
+    if (isUserLoggedIn() && installButton) {
+        showInstallButton();
+    }
+}
+
 // Inicialização quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', () => {
     // Verificar se o usuário está logado
     if (!isUserLoggedIn()) {
         console.log('[PWA Install] Usuário não está logado, funcionalidade de instalação desabilitada');
+        hideInstallButton();
         return;
     }
     
@@ -250,8 +267,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (installButton) {
         installButton.addEventListener('click', installPWA);
-        // Inicialmente escondido, será mostrado quando beforeinstallprompt disparar
-        hideInstallButton();
+        // Mostrar o botão sempre que o usuário estiver logado e PWA não estiver instalado
+        showInstallButton();
+        
+        // Verificar periodicamente se o PWA pode ser instalado
+        setInterval(checkInstallability, 5000);
     }
     
     console.log('[PWA Install] Sistema de instalação PWA inicializado');
