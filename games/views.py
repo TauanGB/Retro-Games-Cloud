@@ -910,56 +910,30 @@ def admin_extract_embed_link(request, pk):
         }, status=400, content_type='application/json')
     
     try:
-        logger.info(f"DEBUG - View admin_extract_embed_link chamada com embed_url: {embed_url}")
-        print(f"DEBUG - View admin_extract_embed_link chamada com embed_url: {embed_url}")
-        
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
             'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
         }
         
-        # A função _extract_embed_url busca o textarea readonly e extrai o link
-        logger.info(f"DEBUG - Chamando _extract_embed_url com URL: {embed_url}")
-        print(f"DEBUG - Chamando _extract_embed_url com URL: {embed_url}")
-        
         extracted_url = _extract_embed_url(embed_url, headers)
         
-        logger.info(f"DEBUG - Resultado de _extract_embed_url: {extracted_url}")
-        print(f"DEBUG - Resultado de _extract_embed_url: {extracted_url}")
-        
         if extracted_url:
-            logger.info(f"DEBUG - Sucesso! URL extraída: {extracted_url}")
-            print(f"DEBUG - Sucesso! URL extraída: {extracted_url}")
             return JsonResponse({
                 'success': True,
                 'url': extracted_url
             }, content_type='application/json')
         else:
-            logger.warning(f"DEBUG - Falha: Não foi possível extrair URL do embed")
-            print("DEBUG - Falha: Não foi possível extrair URL do embed")
             return JsonResponse({
                 'success': False,
-                'error': 'Não foi possível extrair o link do embed. Textarea readonly não encontrado ou sem URL válida.',
-                'debug_info': {
-                    'embed_url_requested': embed_url,
-                    'message': 'Verifique os logs do servidor para mais detalhes'
-                }
+                'error': 'Não foi possível extrair o conteúdo do embed. Textarea readonly não encontrado ou vazio.'
             }, status=404, content_type='application/json')
             
     except Exception as e:
-        import traceback
-        error_trace = traceback.format_exc()
-        logger.error(f"DEBUG - Exceção na view admin_extract_embed_link: {str(e)}")
-        logger.error(f"DEBUG - Traceback completo:\n{error_trace}")
-        print(f"DEBUG - Exceção na view admin_extract_embed_link: {str(e)}")
-        print(f"DEBUG - Traceback completo:\n{error_trace}")
+        logger.error(f"Erro ao extrair conteúdo do embed: {str(e)}")
         return JsonResponse({
             'success': False,
-            'error': f'Erro ao extrair link: {str(e)}',
-            'debug_info': {
-                'traceback': error_trace[:500]  # Limitar tamanho do traceback
-            }
+            'error': f'Erro ao extrair conteúdo: {str(e)}'
         }, status=500, content_type='application/json')
 
 

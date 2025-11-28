@@ -781,25 +781,21 @@ function updateApiResults(data) {
 function startPolling() {
     // Prevenir múltiplas inicializações
     if (pollingInterval) {
-        console.log('Polling já está ativo, ignorando nova inicialização');
         return;
     }
     
     checkApiStatus();
-    pollingInterval = setInterval(checkApiStatus, 3000); // Verificar a cada 3 segundos
-    console.log('Polling iniciado');
+    pollingInterval = setInterval(checkApiStatus, 3000);
 }
 
 function stopPolling() {
     if (pollingInterval) {
         clearInterval(pollingInterval);
         pollingInterval = null;
-        console.log('Polling parado');
     }
     if (progressInterval) {
         clearInterval(progressInterval);
         progressInterval = null;
-        console.log('Progress animation parada');
     }
 }
 
@@ -1127,13 +1123,100 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     };
     
+    // Função para mostrar popup com conteúdo do embed
+    function showEmbedPopup(embedContent) {
+        // Criar modal/popup
+        const modal = document.createElement('div');
+        modal.className = 'modal fade show';
+        modal.style.display = 'block';
+        modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+        modal.innerHTML = `
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content modern-card">
+                    <div class="modal-header">
+                        <h5 class="modal-title retro-heading">
+                            <i class="fas fa-code me-2"></i>Código do Embed
+                        </h5>
+                        <button type="button" class="btn-close" onclick="this.closest('.modal').remove()"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="modern-label">Código HTML do Embed:</label>
+                            <textarea class="form-control modern-input font-monospace" rows="8" readonly style="font-size: 0.9rem;">${embedContent}</textarea>
+                        </div>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Como usar:</strong> Copie o código acima e cole onde desejar incorporar o jogo.
+                        </div>
+                        <div class="preview-container mb-3" style="border: 1px solid var(--accent-cyan); padding: 10px; background: var(--surface-bg);">
+                            <label class="modern-label">Preview:</label>
+                            <div style="min-height: 200px; display: flex; align-items: center; justify-content: center;">
+                                ${embedContent}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="modern-btn modern-btn-secondary" onclick="const textarea = this.closest('.modal').querySelector('textarea'); copyToClipboard(textarea.value, 'Código copiado!', this);">
+                            <i class="fas fa-copy me-2"></i>Copiar Código
+                        </button>
+                        <button type="button" class="modern-btn modern-btn-primary" onclick="this.closest('.modal').remove()">
+                            <i class="fas fa-times me-2"></i>Fechar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Fechar ao clicar fora do modal
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+    }
+    
+    // Função para extrair URL do src do iframe HTML
+    function extractUrlFromIframeHtml(iframeHtml) {
+        if (!iframeHtml) return null;
+        
+        const trimmed = iframeHtml.trim();
+        
+        // Se já for uma URL válida (começa com http), retornar direto
+        if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+            // Verificar se não é HTML (não contém tags)
+            if (!trimmed.includes('<') && !trimmed.includes('>')) {
+                return trimmed;
+            }
+        }
+        
+        // Tentar extrair URL do atributo src do iframe
+        // Padrão: src="url" ou src='url'
+        const srcMatch = trimmed.match(/src\s*=\s*["']([^"']+)["']/i);
+        if (srcMatch && srcMatch[1]) {
+            return srcMatch[1].trim();
+        }
+        
+        // Tentar outro padrão: src=url (sem aspas)
+        const srcMatch2 = trimmed.match(/src\s*=\s*([^\s>]+)/i);
+        if (srcMatch2 && srcMatch2[1]) {
+            const url = srcMatch2[1].trim();
+            if (url.startsWith('http://') || url.startsWith('https://')) {
+                return url;
+            }
+        }
+        
+        // Se não encontrar, retornar null
+        return null;
+    }
+    
     // Função para abrir embed e extrair link do textarea readonly
     function openEmbedAndExtractLink(embedUrl, buttonElement) {
         const button = buttonElement;
         
         // Prevenir múltiplas chamadas simultâneas
         if (button.disabled || button.dataset.processing === 'true') {
-            console.log('Função já está processando, ignorando nova chamada');
             return;
         }
         
@@ -1146,8 +1229,22 @@ document.addEventListener('DOMContentLoaded', function() {
         button.disabled = true;
         button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Carregando...';
         
+        // Extrair URL do src se embedUrl for HTML de iframe
+        let actualUrl = extractUrlFromIframeHtml(embedUrl);
+        
+        // Se não conseguiu extrair URL, mostrar erro
+        if (!actualUrl || actualUrl.trim().startsWith('<')) {
+            alert('Erro: Não foi possível extrair a URL do embed. O formato pode estar incorreto.');
+            button.disabled = false;
+            button.dataset.processing = 'false';
+            button.innerHTML = originalText;
+            return;
+        }
+        
+        const fetchUrl = `{% url "admin_extract_embed_link" game_request.pk %}?embed_url=${encodeURIComponent(actualUrl)}`;
+        
         // Fazer requisição ao backend para extrair o link
-        fetch(`{% url "admin_extract_embed_link" game_request.pk %}?embed_url=${encodeURIComponent(embedUrl)}`, {
+        fetch(fetchUrl, {
             method: 'GET',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
@@ -1159,9 +1256,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Verificar se a resposta é JSON
             const contentType = response.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
-                // Se não for JSON, tentar ler como texto para debug
                 return response.text().then(text => {
-                    console.error('Resposta não é JSON. Conteúdo recebido:', text.substring(0, 500));
                     throw new Error('Resposta do servidor não é JSON válido. A página pode estar offline ou retornando HTML.');
                 });
             }
@@ -1180,18 +1275,15 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             if (data.success && data.url) {
-                // Abrir URL extraída em nova aba
-                window.open(data.url, '_blank', 'noopener,noreferrer');
+                // Mostrar popup com o conteúdo HTML retornado
+                showEmbedPopup(data.url);
                 
-                // Restaurar botão com feedback
+                // Restaurar botão
                 button.disabled = false;
                 button.dataset.processing = 'false';
-                button.innerHTML = '<i class="fas fa-check me-2"></i>Link Extraído!';
-                setTimeout(() => {
-                    button.innerHTML = originalText;
-                }, 2000);
+                button.innerHTML = originalText;
             } else {
-                throw new Error('URL não encontrada na resposta');
+                throw new Error('Conteúdo não encontrado na resposta');
             }
         })
         .catch(error => {
@@ -1212,11 +1304,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Adicionar event listeners para botões de abrir embed (usar delegação de eventos para evitar múltiplos listeners)
     // Usar uma flag para garantir que o listener só seja adicionado uma vez
-    if (!window.embedButtonListenerAdded) {
+        if (!window.embedButtonListenerAdded) {
         document.addEventListener('click', function(e) {
-            if (e.target.closest('.open-embed-btn')) {
+            const closestButton = e.target.closest('.open-embed-btn');
+            if (closestButton) {
                 e.preventDefault();
-                const button = e.target.closest('.open-embed-btn');
+                const button = closestButton;
                 
                 // Prevenir múltiplos cliques enquanto está processando
                 if (button.disabled) {
@@ -1224,6 +1317,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 const embedUrl = button.getAttribute('data-embed-url');
+                
                 if (embedUrl) {
                     openEmbedAndExtractLink(embedUrl, button);
                 }

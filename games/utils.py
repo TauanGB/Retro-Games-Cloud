@@ -21,101 +21,55 @@ def _extract_embed_url(game_url, headers):
         str: URL do embed ou None se não encontrado
     """
     try:
-        logger.info(f"DEBUG - Iniciando extração de embed URL de: {game_url}")
-        print(f"DEBUG - Iniciando extração de embed URL de: {game_url}")
-        
         response = requests.get(game_url, headers=headers, timeout=15)
         response.raise_for_status()
         
-        logger.info(f"DEBUG - Status da resposta: {response.status_code}")
-        logger.info(f"DEBUG - Content-Type: {response.headers.get('content-type', 'N/A')}")
-        logger.info(f"DEBUG - Tamanho do HTML: {len(response.text)} caracteres")
-        logger.info(f"DEBUG - Primeiros 200 caracteres da resposta: {response.text[:200]}")
-        print(f"DEBUG - Status da resposta: {response.status_code}")
-        print(f"DEBUG - Content-Type: {response.headers.get('content-type', 'N/A')}")
-        print(f"DEBUG - Tamanho do HTML: {len(response.text)} caracteres")
-        print(f"DEBUG - Primeiros 200 caracteres da resposta: {response.text[:200]}")
-        
-        # Verificar se a página está offline ou retornou erro
         if 'offline' in response.text.lower() or 'Offline' in response.text:
-            logger.warning(f"DEBUG - Página parece estar offline ou retornou mensagem de erro")
-            print("DEBUG - Página parece estar offline ou retornou mensagem de erro")
             raise Exception("A página do embed está offline ou inacessível")
         
         soup = BeautifulSoup(response.text, 'html.parser')
         
         # Buscar textarea readonly
+        all_textareas = soup.find_all('textarea')
+        textarea = None
+        
+        # Tentar diferentes formas de buscar o textarea readonly
         textarea = soup.find('textarea', {'readonly': True})
+        if not textarea:
+            textarea = soup.find('textarea', {'readonly': ''})
+        if not textarea:
+            for ta in all_textareas:
+                if 'readonly' in ta.attrs:
+                    textarea = ta
+                    break
+        if not textarea:
+            try:
+                textarea = soup.select_one('textarea[readonly]')
+            except:
+                pass
         
         if textarea:
-            textarea_content = textarea.get_text(strip=True)
+            # Obter o texto completo do textarea (conteúdo interno HTML)
+            textarea_content = textarea.decode_contents() if hasattr(textarea, 'decode_contents') else ''
             
-            logger.info(f"DEBUG - Textarea readonly encontrado!")
-            logger.info(f"DEBUG - Conteúdo do textarea (primeiros 500 caracteres): {textarea_content[:500]}")
-            logger.info(f"DEBUG - Conteúdo completo do textarea: {textarea_content}")
-            print("DEBUG - Textarea readonly encontrado!")
-            print(f"DEBUG - Conteúdo do textarea (primeiros 500 caracteres): {textarea_content[:500]}")
-            print(f"DEBUG - Conteúdo completo do textarea: {textarea_content}")
+            if not textarea_content or not textarea_content.strip():
+                textarea_content = ''.join(str(child) for child in textarea.children) if hasattr(textarea, 'children') else ''
             
-            # Extrair URL do conteúdo do textarea
-            import re
-            # Procurar por URLs no formato http:// ou https://
-            url_pattern = r'https?://[^\s<>"{}|\\^`\[\]]+'
-            urls = re.findall(url_pattern, textarea_content)
+            if not textarea_content or not textarea_content.strip():
+                textarea_content = textarea.string or ''
             
-            logger.info(f"DEBUG - URLs encontradas no textarea: {urls}")
-            print(f"DEBUG - URLs encontradas no textarea: {urls}")
-            
-            if urls:
-                # Retornar a primeira URL encontrada (geralmente é a do embed)
-                embed_url = urls[0]
-                # Limpar a URL se tiver caracteres extras
-                embed_url = embed_url.rstrip('.,;!?')
-                logger.info(f"DEBUG - URL do embed extraída e limpa: {embed_url}")
-                print(f"DEBUG - URL do embed extraída e limpa: {embed_url}")
-                return embed_url
-            else:
-                logger.warning(f"DEBUG - Nenhuma URL encontrada no conteúdo do textarea")
-                print("DEBUG - Nenhuma URL encontrada no conteúdo do textarea")
-        else:
-            logger.warning(f"DEBUG - Textarea readonly NÃO encontrado na página")
-            print("DEBUG - Textarea readonly NÃO encontrado na página")
-            
-            # Debug: mostrar todos os textareas encontrados
-            all_textareas = soup.find_all('textarea')
-            logger.info(f"DEBUG - Total de textareas encontrados na página: {len(all_textareas)}")
-            print(f"DEBUG - Total de textareas encontrados na página: {len(all_textareas)}")
-            
-            for idx, ta in enumerate(all_textareas):
-                readonly_attr = ta.get('readonly')
-                ta_id = ta.get('id', 'sem id')
-                ta_class = ta.get('class', [])
-                logger.info(f"DEBUG - Textarea {idx + 1}: id={ta_id}, readonly={readonly_attr}, class={ta_class}")
-                print(f"DEBUG - Textarea {idx + 1}: id={ta_id}, readonly={readonly_attr}, class={ta_class}")
+            if textarea_content and textarea_content.strip():
+                return textarea_content.strip()
         
         # Fallback: tentar construir URL de embed baseado na URL do jogo
-        logger.info(f"DEBUG - Tentando fallback baseado na URL")
-        print("DEBUG - Tentando fallback baseado na URL")
         if '/play/' in game_url:
-            fallback_url = game_url.replace('/play/', '/embed/')
-            logger.info(f"DEBUG - Fallback URL (play->embed): {fallback_url}")
-            print(f"DEBUG - Fallback URL (play->embed): {fallback_url}")
-            return fallback_url
+            return game_url.replace('/play/', '/embed/')
         elif '/embed/' in game_url:
-            logger.info(f"DEBUG - Fallback URL (já é embed): {game_url}")
-            print(f"DEBUG - Fallback URL (já é embed): {game_url}")
             return game_url
         
     except Exception as e:
-        import traceback
-        error_trace = traceback.format_exc()
-        logger.error(f"DEBUG - Erro ao extrair URL do embed de {game_url}: {str(e)}")
-        logger.error(f"DEBUG - Traceback completo:\n{error_trace}")
-        print(f"DEBUG - Erro ao extrair URL do embed de {game_url}: {str(e)}")
-        print(f"DEBUG - Traceback completo:\n{error_trace}")
+        logger.warning(f"Erro ao extrair conteúdo do embed de {game_url}: {str(e)}")
     
-    logger.warning(f"DEBUG - Retornando None - não foi possível extrair URL")
-    print("DEBUG - Retornando None - não foi possível extrair URL")
     return None
 
 
@@ -222,14 +176,23 @@ def search_games_on_retrogames(query, max_results=5):
             else:
                 image_url = urljoin('https://www.retrogames.cc', img_src)
             
-            # Buscar URL do embed na página do jogo
-            embed_url = _extract_embed_url(game_url, headers)
+            # Construir URL do embed baseado na URL do jogo
+            # Não buscar o conteúdo do textarea aqui, apenas a URL
+            if '/play/' in game_url:
+                embed_url = game_url.replace('/play/', '/embed/')
+            elif '/embed/' in game_url:
+                embed_url = game_url
+            else:
+                # Tentar construir URL de embed
+                embed_url = game_url.replace('/game/', '/embed/').replace('/play/', '/embed/')
+                if '/embed/' not in embed_url:
+                    embed_url = game_url
             
             game_data = {
                 'title': title[:100],  # Limitar tamanho do título
                 'image_url': image_url,
                 'game_url': game_url,
-                'embed_url': embed_url or game_url,
+                'embed_url': embed_url,
             }
             
             results.append(game_data)
@@ -288,14 +251,21 @@ def search_games_on_retrogames(query, max_results=5):
                         if any(r['game_url'] == game_url for r in results):
                             continue
                         
-                        # Buscar URL do embed na página do jogo
-                        embed_url = _extract_embed_url(game_url, headers)
+                        # Construir URL do embed baseado na URL do jogo
+                        if '/play/' in game_url:
+                            embed_url = game_url.replace('/play/', '/embed/')
+                        elif '/embed/' in game_url:
+                            embed_url = game_url
+                        else:
+                            embed_url = game_url.replace('/game/', '/embed/').replace('/play/', '/embed/')
+                            if '/embed/' not in embed_url:
+                                embed_url = game_url
                         
                         game_data = {
                             'title': title[:100],
                             'image_url': image_url,
                             'game_url': game_url,
-                            'embed_url': embed_url or game_url,
+                            'embed_url': embed_url,
                         }
                         
                         results.append(game_data)
