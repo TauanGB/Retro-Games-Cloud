@@ -469,6 +469,13 @@ a:hover {
     cursor: pointer;
     position: relative;
     overflow: hidden;
+    z-index: 1;
+}
+
+/* Garantir que o conteúdo do botão fique acima do efeito */
+.modern-btn > * {
+    position: relative;
+    z-index: 2;
 }
 
 .modern-btn::before {
@@ -483,6 +490,8 @@ a:hover {
         rgba(255, 255, 255, 0.1), 
         transparent);
     transition: var(--transition-normal);
+    z-index: 0;
+    pointer-events: none;
 }
 
 .modern-btn:hover::before {
@@ -492,13 +501,13 @@ a:hover {
 .modern-btn-primary {
     background: var(--accent-cyan);
     border-color: var(--accent-cyan);
-    color: var(--primary-bg);
+    color: var(--primary-bg) !important;
 }
 
 .modern-btn-primary:hover {
     background: var(--accent-green);
     border-color: var(--accent-green);
-    color: var(--primary-bg);
+    color: var(--primary-bg) !important;
     transform: translateY(-2px);
     box-shadow: var(--shadow-glow);
 }
@@ -506,26 +515,98 @@ a:hover {
 .modern-btn-secondary {
     background: transparent;
     border-color: var(--border-primary);
-    color: var(--text-primary);
+    color: var(--text-primary) !important;
 }
 
 .modern-btn-secondary:hover {
     background: var(--surface-bg);
     border-color: var(--accent-cyan);
-    color: var(--accent-cyan);
+    color: var(--accent-cyan) !important;
     transform: translateY(-2px);
 }
 
 .modern-btn-danger {
     background: transparent;
     border-color: var(--accent-orange);
-    color: var(--accent-orange);
+    color: var(--accent-orange) !important;
 }
 
 .modern-btn-danger:hover {
     background: var(--accent-orange);
-    color: var(--primary-bg);
+    color: var(--primary-bg) !important;
     transform: translateY(-2px);
+}
+
+.modern-btn-success {
+    background: var(--accent-green);
+    border-color: var(--accent-green);
+    color: var(--primary-bg) !important;
+}
+
+.modern-btn-success:hover {
+    background: var(--accent-cyan);
+    border-color: var(--accent-cyan);
+    color: var(--primary-bg) !important;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow);
+}
+
+.modern-btn-outline {
+    background: transparent;
+    border-color: var(--accent-cyan);
+    color: var(--accent-cyan) !important;
+}
+
+.modern-btn-outline:hover {
+    background: var(--accent-cyan);
+    border-color: var(--accent-cyan);
+    color: var(--primary-bg) !important;
+    transform: translateY(-2px);
+}
+
+/* Garantir visibilidade do texto em botões combinados com Bootstrap */
+.btn.modern-btn,
+button.modern-btn {
+    color: inherit !important;
+}
+
+.btn.modern-btn-primary,
+button.modern-btn-primary {
+    color: var(--primary-bg) !important;
+}
+
+.btn.modern-btn-secondary,
+button.modern-btn-secondary {
+    color: var(--text-primary) !important;
+}
+
+.btn.modern-btn-secondary:hover,
+button.modern-btn-secondary:hover {
+    color: var(--accent-cyan) !important;
+}
+
+.btn.modern-btn-danger,
+button.modern-btn-danger {
+    color: var(--accent-orange) !important;
+}
+
+.btn.modern-btn-danger:hover,
+button.modern-btn-danger:hover {
+    color: var(--primary-bg) !important;
+}
+
+.btn.modern-btn-success,
+button.modern-btn-success {
+    color: var(--primary-bg) !important;
+}
+
+/* Garantir que ícones e textos dentro dos botões sejam visíveis */
+.modern-btn i,
+.modern-btn span,
+.modern-btn svg {
+    position: relative;
+    z-index: 2;
+    color: inherit;
 }
 
 /* Formulários modernos */

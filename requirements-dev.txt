@@ -1,0 +1,24 @@
+# ===========================================
+# RETRO GAMES CLOUD - REQUIREMENTS DESENVOLVIMENTO
+# ===========================================
+# Este arquivo contém ferramentas de desenvolvimento,
+# testes e qualidade de código.
+# ===========================================
+
+# Incluir requirements de produção
+-r requirements-prod.txt
+
+# Testes
+pytest==7.4.3
+pytest-django==4.7.0
+coverage==7.3.2
+
+# Qualidade de Código
+flake8==6.1.0
+black==23.11.0
+isort==5.12.0
+
+# Debug e Desenvolvimento
+django-debug-toolbar==4.2.0
+django-extensions==3.2.3
+

@@ -36,6 +36,20 @@ function hideInstallButton() {
     }
 }
 
+// Função para verificar se deve mostrar o botão (mesmo sem beforeinstallprompt)
+function shouldShowInstallButton() {
+    // Só mostrar se usuário estiver logado e PWA não estiver instalado
+    if (!isUserLoggedIn()) {
+        return false;
+    }
+    
+    if (isPWAInstalled()) {
+        return false;
+    }
+    
+    return true;
+}
+
 // Função para verificar se o PWA já está instalado
 function isPWAInstalled() {
     // Verificar se está rodando em modo standalone (instalado)

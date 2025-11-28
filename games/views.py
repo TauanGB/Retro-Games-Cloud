@@ -365,21 +365,41 @@ def admin_approve_request(request, pk):
         return redirect('admin_game_request_detail', pk=pk)
     
     try:
-        # Garantir que ai_query existe
-        if not game_request.ai_query:
-            game_request.ai_query = f"{game_request.title} jogo retro"
+        # Garantir que temos um título válido
+        if not game_request.title or not game_request.title.strip():
+            error_msg = 'O título do jogo é obrigatório e não pode estar vazio.'
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'error': error_msg}, status=400)
+            messages.error(request, error_msg)
+            return redirect('admin_game_request_detail', pk=pk)
+        
+        # Garantir que ai_query existe e não está vazio
+        if not game_request.ai_query or not game_request.ai_query.strip():
+            game_request.ai_query = f"{game_request.title.strip()} jogo retro"
             game_request.save(update_fields=['ai_query'])
         
         # Preparar dados para kickoff (enviar direto, sem chamar /inputs)
-        query_text = game_request.ai_query or f"{game_request.title} jogo retro"
-        description = game_request.details or ""
+        # Garantir que query_text sempre tenha um valor válido e não vazio
+        query_text = game_request.ai_query.strip() if game_request.ai_query and game_request.ai_query.strip() else f"{game_request.title.strip()} jogo retro"
         
-        # A API espera: search_term e uma lista de nomes de jogos
-        # Por enquanto, vamos enviar o título como único nome e o query como search_term
+        # Validação final: garantir que query_text não está vazio
+        if not query_text or not query_text.strip():
+            query_text = f"{game_request.title.strip()} jogo retro"
+        
+        description = game_request.details.strip() if game_request.details else ""
+        
+        # A API espera apenas o search_term
         kickoff_payload = {
             "search_term": query_text,  # API espera "search_term", não "query"
-            "names": [game_request.title]  # Lista de nomes de jogos
         }
+        
+        # Validar que search_term não está vazio antes de enviar
+        if not kickoff_payload["search_term"] or not kickoff_payload["search_term"].strip():
+            error_msg = 'Não foi possível gerar um termo de busca válido. Por favor, verifique o título e a consulta para IA.'
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'error': error_msg}, status=400)
+            messages.error(request, error_msg)
+            return redirect('admin_game_request_detail', pk=pk)
         
         # Se houver descrição, podemos tentar adicionar (mas pode não ser necessário)
         if description:

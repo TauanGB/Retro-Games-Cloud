@@ -1,8 +1,8 @@
 # ===========================================
-# RETRO GAMES CLOUD - REQUIREMENTS
+# RETRO GAMES CLOUD - REQUIREMENTS PRODUÇÃO
 # ===========================================
-# Este arquivo contém apenas as bibliotecas essenciais
-# que estão sendo utilizadas no código.
+# Este arquivo contém apenas as bibliotecas necessárias
+# para executar o projeto em produção.
 # ===========================================
 
 # Django Framework
@@ -24,3 +24,4 @@ whitenoise==6.6.0
 requests==2.31.0
 beautifulsoup4==4.12.2
 lxml==4.9.3
+
